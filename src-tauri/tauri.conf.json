@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "BootsAutoClicker",
+  "mainBinaryName": "BootsAutoClicker",
+  "version": "0.3.0",
+  "identifier": "com.boots.autoclicker",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "BootsAutoClicker",
+        "width": 980,
+        "height": 600,
+        "minWidth": 700,
+        "minHeight": 460,
+        "resizable": true,
+        "maximizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/Boots3453/BootsAutoClicker/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ0ODNFQzk1NDg4QTdFODkKUldTSmZvcElsZXlEMUhWQ0MvOVpDUHhFc1lPNzd2T0tFQmJ5OG56cGkvMlFjK2dqZlhrNUtENkgK"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "publisher": "boots",
+    "copyright": "boots",
+    "shortDescription": "A very fast Windows autoclicker",
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "windows": {
+      "nsis": {
+        "installerHooks": "installer.nsh"
+      }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

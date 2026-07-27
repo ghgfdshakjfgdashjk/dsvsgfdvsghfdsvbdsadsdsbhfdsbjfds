@@ -1,0 +1,1120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BootsAutoClicker</title>
+    <script type="module" src="/src/main.ts" defer></script>
+  </head>
+
+  <body>
+    <div class="shell">
+
+      <div class="aurora" aria-hidden="true">
+        <span class="blob blob-a"></span>
+        <span class="blob blob-b"></span>
+        <span class="blob blob-c"></span>
+      </div>
+
+      <header class="titlebar" data-tauri-drag-region>
+        <div class="brand" data-tauri-drag-region>
+          <span class="mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 3.2 18.6 11 12.4 12.6 9.6 18.4Z" fill="currentColor" />
+              <circle cx="17.4" cy="16.6" r="3.1" stroke="currentColor" stroke-width="1.6" opacity=".55" />
+            </svg>
+          </span>
+          <span class="brand-text" data-tauri-drag-region>
+            <b>Boots</b>AutoClicker
+          </span>
+          <span class="state-dot" id="titleDot" data-tauri-drag-region></span>
+        </div>
+
+        <div class="window-actions">
+
+          <button class="win-btn pin" id="btnPin" aria-label="Always on top" type="button">
+            <svg viewBox="0 0 12 12">
+              <path d="M7.2 1.1 10.9 4.8M8.5 2.4 6.7 4.2a2.5 2.5 0 0 0-2.3.6l3.4 3.4a2.5 2.5 0 0 0 .6-2.3l1.8-1.8M4.7 7.3 1.9 10.1"
+                stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button class="win-btn" id="btnMinimize" aria-label="Minimise" type="button">
+            <svg viewBox="0 0 12 12"><path d="M2.5 6h7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+          <button class="win-btn danger" id="btnClose" aria-label="Hide to tray" type="button">
+            <svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="collapse update-bar" id="updateBar">
+        <div>
+          <div class="update-inner">
+            <span class="update-dot" aria-hidden="true"></span>
+            <span class="update-text" id="updateText">An update is available</span>
+            <span class="update-notes" id="updateNotes"></span>
+            <div class="update-actions" id="updateActions">
+              <button class="ghost-btn" id="btnUpdateLater" type="button">Later</button>
+              <button class="chip update-go" id="btnUpdateNow" type="button">Download &amp; install</button>
+            </div>
+          </div>
+          <div class="update-track" id="updateTrack" hidden>
+            <span class="update-fill" id="updateFill"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="body">
+
+        <nav class="sidebar">
+          <span class="nav-indicator" id="navIndicator" aria-hidden="true"></span>
+
+          <button class="nav-item active" data-tab="clicker" type="button">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M6 3.6 17.4 10.2 12.2 11.6 9.8 16.4Z" fill="currentColor"/></svg>
+            <span>Clicker</span>
+          </button>
+          <button class="nav-item" data-tab="automation" type="button">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 5h9M4 12h16M4 19h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="17" cy="5" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="11" cy="19" r="2.4" stroke="currentColor" stroke-width="1.7"/></svg>
+            <span>Automation</span>
+          </button>
+          <button class="nav-item" data-tab="optimize" type="button">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M13.4 2.6 4.2 13.4h6.1l-.7 8 9.2-10.8h-6.1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            <span>Optimize</span>
+          </button>
+          <button class="nav-item" data-tab="suggest" type="button">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.4a6.6 6.6 0 0 0-3.8 12v2.2h7.6V15.4A6.6 6.6 0 0 0 12 3.4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.6 20.6h4.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span>Suggest</span>
+          </button>
+          <button class="nav-item" data-tab="settings" type="button">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.6v2.4M12 18v2.4M3.6 12h2.4M18 12h2.4M6.1 6.1l1.7 1.7M16.2 16.2l1.7 1.7M17.9 6.1l-1.7 1.7M7.8 16.2l-1.7 1.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span>Settings</span>
+          </button>
+
+          <div class="nav-spacer"></div>
+
+          <div class="side-readout">
+            <span class="side-readout-label" id="sideCpsLabel">Live CPS</span>
+            <span class="side-readout-value" id="sideCps">0</span>
+          </div>
+        </nav>
+
+        <main class="content">
+
+          <section class="panel panel-grid active" data-panel="clicker">
+            <div class="panel-head">
+              <h1>Clicker</h1>
+              <p>Each clicker runs independently, with its own bind and rate.</p>
+            </div>
+
+            <div class="profile-bar">
+              <div class="profile-tabs" id="profileTabs"></div>
+              <button class="ghost-btn" id="btnAddProfile" type="button">+ New</button>
+              <button class="ghost-btn danger-btn" id="btnDeleteProfile" type="button">Delete</button>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Name</label>
+              <div class="row-between" style="margin-top: 9px">
+                <input type="text" id="profileName" class="profile-name" spellcheck="false" />
+                <label class="switch" id="profileEnabledWrap">
+                  <input type="checkbox" id="profileEnabled" checked />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <p class="hint" id="profileEnabledHint" hidden>
+                Switched off — the bind does nothing and this clicker can't run.
+              </p>
+            </div>
+
+            <div class="card hero">
+              <div class="hero-row">
+                <div class="hero-left">
+                  <span class="hero-label">Status</span>
+                  <span class="hero-status" id="heroStatus">Idle</span>
+                  <span class="hero-sub" id="heroSub">Press F6 to start</span>
+                </div>
+                <button class="power" id="btnPower" type="button">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 3.6v7.2" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+                    <path d="M7 6.6a7.2 7.2 0 1 0 10 0" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/>
+                  </svg>
+                  <span id="powerLabel">Start</span>
+                </button>
+              </div>
+
+              <canvas class="cps-graph" id="cpsGraph" width="400" height="46"></canvas>
+            </div>
+
+            <h2 class="group-title">Trigger</h2>
+
+            <div class="card">
+              <label class="field-label">Activation mode</label>
+              <div class="segmented" id="modeGroup">
+                <button data-value="toggle" class="seg active" type="button">Toggle</button>
+                <button data-value="hold" class="seg" type="button">Hold</button>
+              </div>
+              <p class="hint" id="modeHint">Tap the bind to start, tap again to stop.</p>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <label class="field-label">Keybind</label>
+                <label class="switch">
+                  <input type="checkbox" id="bindEnabled" checked />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="bindWrap">
+                <div>
+                  <button class="keybind" id="btnBind" type="button" style="margin-top: 11px">
+                    <span class="keycap" id="bindLabel">F6</span>
+                    <span class="keybind-hint">click to rebind</span>
+                  </button>
+                </div>
+              </div>
+              <p class="hint" id="bindHint">Any key or mouse button. Esc cancels.</p>
+            </div>
+
+            <h2 class="group-title">Rate</h2>
+
+            <div class="card">
+              <div class="row-between">
+                <label class="field-label" id="cpsLabel">Clicks per second</label>
+                <div class="segmented" id="rateModeGroup">
+                  <button data-value="cps" class="seg active" type="button">Speed</button>
+                  <button data-value="delay" class="seg" type="button">Delay</button>
+                </div>
+              </div>
+
+              <div class="chip-row" id="cpsChips" style="margin: 11px 0">
+                <button class="chip" data-cps="10" type="button">10</button>
+                <button class="chip" data-cps="50" type="button">50</button>
+                <button class="chip" data-cps="500" type="button">500</button>
+                <button class="chip" data-cps="5000" type="button">5k</button>
+                <button class="chip" data-cps="50000" type="button">50k</button>
+              </div>
+
+              <div class="slider-row">
+                <input type="range" id="cpsMaxSlider" min="0" max="1000" step="1" />
+                <input type="number" id="cpsMaxInput" min="0.01" max="50000" step="0.1" />
+              </div>
+
+              <div class="collapse" id="cpsMinWrap">
+                <div>
+                  <label class="field-label sub" id="minLabel">Minimum</label>
+                  <div class="slider-row">
+                    <input type="range" id="cpsMinSlider" min="0" max="1000" step="1" />
+                    <input type="number" id="cpsMinInput" min="0.01" max="50000" step="0.1" />
+                  </div>
+                </div>
+              </div>
+
+              <p class="hint">Ceiling is 50,000 CPS. At high rates the engine batches repetitions into single kernel calls.</p>
+              <div class="collapse" id="cpsWarn">
+                <div>
+                  <p class="warn">
+                    System-wide delivery can't reach this. Every event blocks while other
+                    software's mouse hooks (Discord overlay, RGB suites) process it, which
+                    caps you around 1–2k CPS and hammers your mouse driver. Turn on
+                    <b>Direct to window</b> below for rates like this.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Click duty cycle</label>
+                  <p class="hint tight">Hold the button down for part of each click, instead of clicking instantly.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="dutyEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="dutyWrap">
+                <div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <label class="field-label">Amount</label>
+                    <span class="value-tag">
+                      <input type="number" id="dutyInput" class="tag-input" min="0.1" max="95" step="0.1" />%
+                      · <span id="dutyMs">instant</span>
+                    </span>
+                  </div>
+                  <input type="range" id="dutyCycle" min="0.1" max="95" step="0.1" />
+                  <div class="collapse" id="dutyWarn">
+                    <div>
+                      <p class="warn">
+                        The engine has to hold and release each click separately now, so it
+                        can't batch. Expect a few thousand CPS at most, not 50,000.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Randomise rate</label>
+                  <p class="hint tight">Pick a fresh value between the two ends for every click.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="randomize" />
+                  <span class="track"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <label class="field-label">Interval jitter</label>
+                <span class="value-tag">
+                  <input type="number" id="jitterInput" class="tag-input" min="0" max="95" step="0.1" />%
+                </span>
+              </div>
+              <input type="range" id="jitter" min="0" max="95" step="0.1" />
+              <p class="hint">Wobbles each gap by ± this much, so the spacing is never perfectly even.</p>
+            </div>
+
+            <h2 class="group-title">Click</h2>
+
+            <div class="card">
+              <label class="field-label">Mouse button</label>
+              <div class="segmented wide" id="buttonGroup">
+                <button data-value="left" class="seg active" type="button">Left</button>
+                <button data-value="right" class="seg" type="button">Right</button>
+                <button data-value="middle" class="seg" type="button">Middle</button>
+                <button data-value="mouse4" class="seg" type="button">Mouse 4</button>
+                <button data-value="mouse5" class="seg" type="button">Mouse 5</button>
+              </div>
+              <p class="hint" id="buttonHint" hidden>
+                Ignored while a custom sequence is on — the script decides what gets pressed.
+              </p>
+              <div class="collapse" id="conflictWarn">
+                <div>
+                  <p class="warn">
+                    Your bind is the same button the clicker presses — synthetic clicks will re-trigger it.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Timing precision</label>
+              <div class="segmented" id="precisionGroup">
+                <button data-value="balanced" class="seg active" type="button">Balanced</button>
+                <button data-value="max" class="seg" type="button">Max</button>
+              </div>
+              <p class="hint" id="precisionHint"></p>
+            </div>
+
+            <h2 class="group-title">Limits</h2>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Burst mode</label>
+                  <p class="hint tight">
+                    Click in groups with a pause between, instead of continuously.
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="burstEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="burstWrap">
+                <div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <label class="field-label">Clicks per burst</label>
+                    <span class="value-tag">
+                      <input type="number" id="burstCount" class="tag-input" min="1" max="100000" step="1" />
+                    </span>
+                  </div>
+                  <div class="row-between" style="margin-top: 11px">
+                    <label class="field-label">Pause after each</label>
+                    <span class="value-tag">
+                      <input type="number" id="burstPause" class="tag-input" min="0" max="600000" step="10" /> ms
+                    </span>
+                  </div>
+                  <p class="hint" id="burstHint"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Pixel watch</label>
+                  <p class="hint tight">
+                    Stop when a spot on screen changes colour — a popup appearing, a bar
+                    emptying, anything you can see.
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="pixelEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="pixelWrap">
+                <div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <div class="pixel-swatch" id="pixelSwatch" aria-hidden="true"></div>
+                    <div class="chip-row">
+                      <button class="ghost-btn" id="btnPickPixel" type="button">Pick a pixel</button>
+                      <button class="ghost-btn" id="btnResamplePixel" type="button">Re-read</button>
+                    </div>
+                  </div>
+                  <label class="field-label" style="margin-top: 13px">Stop when it</label>
+                  <div class="segmented wide" id="pixelStopGroup">
+                    <button data-value="change" class="seg active" type="button">Changes</button>
+                    <button data-value="match" class="seg" type="button">Matches</button>
+                  </div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <label class="field-label">Tolerance</label>
+                    <span class="value-tag">
+                      <input type="number" id="pixelTolerance" class="tag-input" min="0" max="100" step="0.5" />%
+                    </span>
+                  </div>
+                  <p class="hint" id="pixelHint"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Click limit</label>
+                  <p class="hint tight">Stop automatically after a set number of clicks.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="limitEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="limitWrap">
+                <div>
+                  <div class="slider-row solo">
+                    <input type="number" id="limitCount" min="1" max="100000000" step="1" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Time limit</label>
+                  <p class="hint tight">Stop automatically after a set length of time.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="timeLimitEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="timeLimitWrap">
+                <div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <label class="field-label">Duration</label>
+                    <span class="value-tag">
+                      <input type="number" id="timeLimitInput" class="tag-input" min="0.1" max="86400" step="0.1" /> s
+                    </span>
+                  </div>
+                  <p class="hint" id="timeLimitHint"></p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Start delay</label>
+                  <p class="hint tight">
+                    Wait after the bind fires before the first click, so there's time to
+                    move the cursor into place.
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="startDelayEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="startDelayWrap">
+                <div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <label class="field-label">Delay</label>
+                    <span class="value-tag">
+                      <input type="number" id="startDelayInput" class="tag-input" min="0" max="60000" step="10" /> ms
+                    </span>
+                  </div>
+                  <p class="hint">
+                    Releasing the bind or hitting the panic key during the countdown
+                    cancels it — you don't have to wait it out.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Window filter</label>
+                  <p class="hint tight">Only click while the focused window title contains this text.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="filterEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="filterWrap">
+                <div>
+                  <div class="slider-row solo">
+                    <input type="text" id="filterTitle" placeholder="e.g. Minecraft" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card span-2">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Direct to window</label>
+                  <p class="hint tight">
+                    Post clicks straight to one window instead of the global input stream.
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="deliveryDirect" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <p class="hint" id="deliveryHint"></p>
+
+              <div class="collapse" id="targetModeWrap">
+                <div>
+                  <label class="field-label" style="margin-top: 13px">Which window</label>
+                  <div class="segmented wide" id="targetModeGroup">
+                    <button data-value="cursor" class="seg active" type="button">Under cursor</button>
+                    <button data-value="focused" class="seg" type="button">Focused</button>
+                    <button data-value="pinned" class="seg" type="button">Pick one</button>
+                  </div>
+                  <p class="hint" id="targetModeHint"></p>
+
+                  <div class="collapse" id="pinnedWrap">
+                    <div>
+                      <div class="row-between spaced-row">
+                        <span class="target-label">Chosen window</span>
+                        <button class="ghost-btn" id="btnRefreshWindows" type="button">Refresh list</button>
+                      </div>
+                      <div class="window-list" id="windowList"></div>
+                      <div class="row-between spaced-row">
+                        <span class="target-label" id="pinnedPointLabel">Clicks the centre</span>
+                        <div class="chip-row">
+                          <button class="ghost-btn" id="btnResetPoint" type="button" hidden>Centre</button>
+                          <button class="ghost-btn" id="btnPickPoint" type="button">Pick point</button>
+                          <button class="ghost-btn" id="btnAddPoint" type="button">+ Add another</button>
+                        </div>
+                      </div>
+                      <div class="point-list" id="pointList"></div>
+                      <p class="hint tight" id="pointHint"></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="collapse" id="targetRow">
+                <div>
+                  <div class="target-row">
+                    <span class="target-label">Will target</span>
+                    <span class="target-name" id="targetName">hover over a window…</span>
+                  </div>
+                </div>
+              </div>
+              <div class="collapse" id="rawInputWarn">
+                <div>
+                  <p class="warn">
+                    <b id="rawInputName">This app</b> reads raw input and ignores posted
+                    clicks, so direct delivery can't reach it — the engine is falling back
+                    to system-wide automatically. Keep the rate modest and it'll behave.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card span-2">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Custom sequence</label>
+                  <p class="hint tight">Run a script of clicks and keystrokes instead of one plain click.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="sequenceEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+
+              <div class="collapse" id="sequenceWrap">
+                <div>
+                <div class="slider-row solo">
+                  <input type="text" id="sequence" placeholder="{LMB}eee" spellcheck="false" />
+                </div>
+                <div class="seq-preview" id="sequencePreview"></div>
+                <div class="split-hints">
+                  <p class="hint">
+                    Braced tokens are buttons, keys and timing; everything else is typed
+                    literally. The whole script counts as one repetition, so your CPS
+                    becomes repetitions per second. Any <code>{WAITMS}</code> inside it
+                    adds to the delay rather than fitting inside it — a 10&nbsp;ms wait
+                    at a 10&nbsp;ms delay repeats every 20&nbsp;ms.
+                  </p>
+                  <p class="hint">
+                    Clicks: <code>{LMB}</code> <code>{RMB}</code> <code>{MMB}</code>
+                    <code>{MB4}</code> <code>{MB5}</code><br />
+                    Hold and release: add <code>D</code> or <code>U</code> —
+                    <code>{LMBD}</code> <code>{LMBU}</code> <code>{RMBD}</code> …<br />
+                    Keys: <code>{SPACE}</code> <code>{ENTER}</code> <code>{TAB}</code>
+                    <code>{SHIFT}</code> <code>{CTRL}</code> <code>{ALT}</code>
+                    <code>{F1}</code>–<code>{F24}</code>, or
+                    <code>{KEYDOWN:SHIFT}</code> <code>{KEYUP:SHIFT}</code><br />
+                    Timing: <code>{WAITMS:10}</code> <code>{WAITS:1.5}</code> ·
+                    Wheel: <code>{SCROLL:-3}</code>
+                  </p>
+                </div>
+                <p class="hint tight">
+                  <code>{LMBD}{WAITMS:10}{LMBU}</code> presses, holds ten milliseconds,
+                  then releases. Any script containing a wait is played step by step
+                  rather than batched, so it can't reach five-figure rates.
+                </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" data-panel="automation">
+            <div class="panel-head">
+              <h1>Automation</h1>
+              <p>Move, click, type and wait — a macro with its own hotkey.</p>
+            </div>
+
+            <div class="card hero" id="autoHero">
+              <div class="hero-left">
+                <span class="hero-label">Macro</span>
+                <span class="hero-status" id="autoStatus">Stopped</span>
+                <span class="hero-sub" id="autoSub">Press F7 to run</span>
+              </div>
+              <button class="power" id="btnAutoRun" type="button">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M7 4.8 19 12 7 19.2Z" fill="currentColor" />
+                </svg>
+                <span id="autoRunLabel">Run</span>
+              </button>
+            </div>
+
+            <div class="grid-2">
+              <div class="card">
+                <div class="row-between">
+                  <label class="field-label">Hotkey</label>
+                  <label class="switch">
+                    <input type="checkbox" id="autoBindEnabled" checked />
+                    <span class="track"></span>
+                  </label>
+                </div>
+                <div class="collapse" id="autoBindWrap">
+                  <div>
+                    <button class="keybind" id="btnAutoBind" type="button" style="margin-top: 11px">
+                      <span class="keycap" id="autoBindLabel">F7</span>
+                      <span class="keybind-hint">click to rebind</span>
+                    </button>
+                  </div>
+                </div>
+                <p class="hint" id="autoBindHint">Separate from the clicker's bind — they never share a key.</p>
+              </div>
+
+              <div class="card">
+                <label class="field-label">Repeat</label>
+                <div class="slider-row">
+                  <input type="number" id="autoRepeat" min="0" max="100000" step="1" />
+                  <button class="ghost-btn" id="btnAutoLoop" type="button">Loop forever</button>
+                </div>
+                <div class="row-between" style="margin-top: 13px">
+                  <label class="field-label">Gap between steps</label>
+                  <span class="value-tag">
+                    <input type="number" id="autoDelayInput" class="tag-input" min="0" max="60000" step="0.1" /> ms
+                  </span>
+                </div>
+                <input type="range" id="autoDelay" min="0" max="2000" step="1" />
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Record</label>
+                  <p class="hint tight" id="recordHint">
+                    Do it once by hand and the steps write themselves, with the positions
+                    and timing already right.
+                  </p>
+                </div>
+                <div class="chip-row">
+                  <label class="mini-check">
+                    <input type="checkbox" id="recordMoves" checked />
+                    <span>Positions</span>
+                  </label>
+                  <button class="chip update-go" id="btnRecord" type="button">Record</button>
+                </div>
+              </div>
+              <p class="hint tight">
+                Clicks and keys aimed at this window are skipped, so pressing Stop doesn't
+                end up in the macro. Anything the clicker itself sends is skipped too.
+              </p>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <label class="field-label">Steps</label>
+                <button class="ghost-btn" id="btnAutoClear" type="button">Clear all</button>
+              </div>
+
+              <div class="step-list" id="stepList"></div>
+
+              <div class="chip-row" style="margin-top: 12px; flex-wrap: wrap">
+                <button class="chip" data-add="move" type="button">+ Move</button>
+                <button class="chip" data-add="click" type="button">+ Click</button>
+                <button class="chip" data-add="key" type="button">+ Key</button>
+                <button class="chip" data-add="text" type="button">+ Type</button>
+                <button class="chip" data-add="wait" type="button">+ Wait</button>
+                <button class="chip" data-add="scroll" type="button">+ Scroll</button>
+              </div>
+
+              <p class="hint">
+                Steps run top to bottom. <b>Move</b> teleports the cursor to a screen
+                position — use <b>Pick</b> to point at the spot instead of typing numbers.
+                <b>Type</b> understands the same <code>{ENTER}</code> tokens as sequences.
+              </p>
+            </div>
+          </section>
+
+          <section class="panel panel-grid" data-panel="optimize">
+            <div class="panel-head">
+              <h1>Optimize</h1>
+              <p>Windows settings worth changing before a session, and shortcuts to the rest.</p>
+            </div>
+
+            <div class="card span-2">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">System tweaks</label>
+                  <p class="hint tight">
+                    Switched on means the change is applied. Read live from Windows, so
+                    these show what's actually set — not what this app last did. Every one
+                    is per-user and reversible; nothing needs administrator rights or
+                    touches other accounts.
+                  </p>
+                </div>
+                <button class="ghost-btn" id="btnOptimizeAll" type="button">Apply all</button>
+              </div>
+              <div class="tweak-list" id="tweakList"></div>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Power plan</label>
+              <div class="segmented wide" id="powerPlanGroup">
+                <button data-value="balanced" class="seg" type="button">Balanced</button>
+                <button data-value="high" class="seg" type="button">High performance</button>
+              </div>
+              <p class="hint" id="powerPlanHint">
+                High performance keeps the CPU off its low-power states, which removes the
+                ramp-up delay at the start of a burst.
+              </p>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Windows settings</label>
+              <div class="chip-row tool-row">
+                <button class="chip" data-launch="gameMode" type="button">Game Mode</button>
+                <button class="chip" data-launch="graphics" type="button">Graphics</button>
+                <button class="chip" data-launch="power" type="button">Power</button>
+                <button class="chip" data-launch="mouse" type="button">Mouse</button>
+                <button class="chip" data-launch="startup" type="button">Startup apps</button>
+                <button class="chip" data-launch="storage" type="button">Storage</button>
+              </div>
+              <p class="hint">Opens the relevant page in Windows Settings.</p>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Built-in tools</label>
+              <div class="chip-row tool-row">
+                <button class="chip" data-launch="taskManager" type="button">Task Manager</button>
+                <button class="chip" data-launch="resourceMonitor" type="button">Resource Monitor</button>
+                <button class="chip" data-launch="diskCleanup" type="button">Disk Cleanup</button>
+              </div>
+              <p class="hint">Ships with Windows. Nothing is downloaded.</p>
+            </div>
+
+            <h2 class="group-title">Needs administrator</h2>
+
+            <div class="card span-2">
+              <p class="warn">
+                <b>Everything below asks for administrator permission.</b> Each one
+                prompts separately and the elevation lasts only as long as that command —
+                the app never keeps administrator rights. These change settings for the
+                whole machine, not just your account, and the cleanup jobs delete files.
+                Read what each one does first.
+              </p>
+            </div>
+
+            <div class="card span-2">
+              <label class="field-label">Machine-wide tweaks</label>
+              <p class="hint tight">
+                Current state is read without elevation, so these show what's really set.
+                Changing one prompts.
+              </p>
+              <div class="tweak-list" id="adminList"></div>
+            </div>
+
+            <div class="card span-2">
+              <label class="field-label">Free up disk space</label>
+              <p class="hint tight">
+                Each runs once and reports nothing back — watch the window it opens.
+              </p>
+              <div class="cleanup-list" id="cleanupList"></div>
+              <p class="hint">
+                Deliberately not here: deleting restore points and shadow copies, turning
+                off Windows services, and removing built-in apps. They free space or shave
+                milliseconds, then break something weeks later in a way nobody connects
+                back to this.
+              </p>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Third-party</label>
+              <button class="ghost-btn wide-btn" id="btnWinutil" type="button">
+                Launch Chris Titus WinUtil
+              </button>
+              <p class="warn tight-top">
+                Not part of this app and not written by us. It asks for administrator
+                rights, then downloads and runs a script from christitus.com each time —
+                so you're trusting that site at the moment you launch it, not a version
+                anyone here has checked. It's well known and open source, but read what
+                you're changing before you apply anything in it.
+              </p>
+            </div>
+          </section>
+
+          <section class="panel panel-grid" data-panel="suggest">
+            <div class="panel-head">
+              <h1>Suggestions</h1>
+              <p>Ideas for what this should do next.</p>
+            </div>
+
+            <div class="card span-2">
+              <label class="field-label">What kind of suggestion?</label>
+              <div class="segmented wide" id="suggestKindGroup">
+                <button data-value="feature" class="seg active" type="button">New feature</button>
+                <button data-value="improvement" class="seg" type="button">Improvement</button>
+                <button data-value="bug" class="seg" type="button">Something's broken</button>
+              </div>
+
+              <label class="field-label" style="margin-top: 15px">Summary</label>
+              <div class="slider-row solo">
+                <input type="text" id="suggestTitle" maxlength="120"
+                  placeholder="One line — what should change?" spellcheck="true" />
+              </div>
+
+              <label class="field-label" style="margin-top: 13px">Details</label>
+              <textarea id="suggestBody" class="suggest-body" rows="7" maxlength="4000"
+                placeholder="What you'd like it to do, and why. For a bug: what you did, what happened, and what you expected instead."></textarea>
+
+              <div class="row-between tight-top">
+                <p class="hint tight" id="suggestHint">
+                  Opens GitHub with this filled in — you get to read and edit it before
+                  anything is posted, and nothing is sent from the app itself.
+                </p>
+                <span class="value-tag"><span id="suggestCount">0</span>/4000</span>
+              </div>
+
+              <div class="chip-row tool-row">
+                <button class="chip update-go" id="btnSuggestSend" type="button">Open on GitHub</button>
+                <button class="ghost-btn" id="btnSuggestCopy" type="button">Copy instead</button>
+                <button class="ghost-btn" id="btnSuggestBrowse" type="button">See existing ones</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Before you send</label>
+              <p class="hint">
+                Have a quick look through the existing suggestions first — if yours is
+                already there, a thumbs-up on it says more than a duplicate does.
+              </p>
+              <p class="hint tight">
+                Posting needs a free GitHub account. No account and no interest in making
+                one? <b>Copy instead</b> puts the same text on your clipboard to send
+                however you like.
+              </p>
+            </div>
+
+            <div class="card">
+              <label class="field-label">What gets included</label>
+              <p class="hint">
+                Your title, your description, and the app version
+                (<span id="suggestVersion">—</span>) so it's clear which build you're on.
+              </p>
+              <p class="hint tight">
+                Nothing else. No settings, no profiles, no machine details, and nothing
+                leaves your computer until you press submit on GitHub yourself.
+              </p>
+            </div>
+          </section>
+
+          <section class="panel panel-grid" data-panel="settings">
+            <div class="panel-head">
+              <h1>Settings</h1>
+              <p>Limits, safety and appearance.</p>
+            </div>
+
+            <h2 class="group-title">Safety</h2>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Edge guard</label>
+                  <p class="hint tight">
+                    Stop the moment the cursor strays near the edge of any visible window
+                    — that's where close buttons and resize borders live.
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="edgeGuardEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="edgeGuardWrap">
+                <div>
+                  <label class="field-label" style="margin-top: 13px">Watch</label>
+                  <div class="segmented wide" id="edgeGuardMode">
+                    <button data-value="window" class="seg active" type="button">Any window</button>
+                    <button data-value="screen" class="seg" type="button">Screen edge</button>
+                  </div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <label class="field-label">Distance</label>
+                    <span class="value-tag">
+                      <input type="number" id="edgeGuardInput" class="tag-input" min="1" max="200" step="1" /> px
+                    </span>
+                  </div>
+                  <input type="range" id="edgeGuardPx" min="1" max="120" step="1" />
+                  <p class="hint" id="edgeGuardHint"></p>
+
+                  <div class="row-between" style="margin-top: 13px">
+                    <div>
+                      <label class="field-label">Title bars and buttons</label>
+                      <p class="hint tight">
+                        Also stop over a window's caption, resize border, minimise or
+                        close button — asks the window itself, so it's exact.
+                      </p>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="edgeGuardChrome" checked />
+                      <span class="track"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Panic key</label>
+              <button class="keybind" id="btnPanic" type="button">
+                <span class="keycap" id="panicLabel">F12</span>
+                <span class="keybind-hint">click to rebind</span>
+              </button>
+              <div class="row-between tight-top">
+                <p class="hint tight">Instantly stops the clicker and any running macro.</p>
+                <button class="ghost-btn" id="btnClearPanic" type="button">Clear</button>
+              </div>
+            </div>
+
+            <h2 class="group-title">Appearance</h2>
+
+            <div class="card">
+              <div class="row-between">
+                <label class="field-label">Accent colour</label>
+                <span class="value-tag">
+                  <input type="number" id="accentInput" class="tag-input" min="0" max="359" step="1" />°
+                </span>
+              </div>
+              <div class="swatch-row" id="swatchRow">
+                <button class="swatch" data-hue="222" style="--sh: 222" type="button" aria-label="Blue"></button>
+                <button class="swatch" data-hue="265" style="--sh: 265" type="button" aria-label="Violet"></button>
+                <button class="swatch" data-hue="315" style="--sh: 315" type="button" aria-label="Pink"></button>
+                <button class="swatch" data-hue="355" style="--sh: 355" type="button" aria-label="Red"></button>
+                <button class="swatch" data-hue="28" style="--sh: 28" type="button" aria-label="Orange"></button>
+                <button class="swatch" data-hue="48" style="--sh: 48" type="button" aria-label="Gold"></button>
+                <button class="swatch" data-hue="145" style="--sh: 145" type="button" aria-label="Green"></button>
+                <button class="swatch" data-hue="185" style="--sh: 185" type="button" aria-label="Teal"></button>
+              </div>
+              <input type="range" id="accentHue" min="0" max="359" step="1" />
+
+              <div class="row-between" style="margin-top: 11px">
+                <label class="field-label">Saturation</label>
+                <span class="value-tag">
+                  <input type="number" id="accentSatInput" class="tag-input" min="0" max="100" step="1" />%
+                </span>
+              </div>
+              <input type="range" id="accentSat" min="0" max="100" step="1" />
+
+              <p class="hint">
+                Everything in the interface derives from these two — buttons, glow, glass
+                edges and all. Hue picks the colour, saturation how strongly it's used, so
+                the same 360 hues cover everything from nearly grey to fully vivid.
+              </p>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Theme</label>
+              <div class="segmented wide" id="themeGroup">
+                <button data-value="gradient" class="seg active" type="button">Gradient</button>
+                <button data-value="dark" class="seg" type="button">Dark</button>
+                <button data-value="light" class="seg" type="button">Light</button>
+              </div>
+              <p class="hint" id="themeHint">Follows your Windows app colour setting.</p>
+            </div>
+
+            <div class="card span-2">
+              <label class="field-label">In-app cursor</label>
+              <div class="segmented wide" id="cursorStyleGroup">
+                <button data-value="image" class="seg active" type="button">Dot</button>
+                <button data-value="ring" class="seg" type="button">Ring</button>
+                <button data-value="cross" class="seg" type="button">Cross</button>
+                <button data-value="arrow" class="seg" type="button">Arrow</button>
+                <button data-value="custom" class="seg" type="button">Custom</button>
+                <button data-value="system" class="seg" type="button">System</button>
+              </div>
+
+              <div class="collapse" id="cursorUploadWrap">
+                <div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <div class="cursor-preview" id="cursorPreview" aria-hidden="true"></div>
+                    <div class="chip-row">
+                      <button class="ghost-btn" id="btnCursorPick" type="button">Choose image…</button>
+                      <button class="ghost-btn danger-btn" id="btnCursorClear" type="button" hidden>Remove</button>
+                    </div>
+                  </div>
+
+                  <input type="file" id="cursorFile" accept="image/png,image/webp,image/gif,image/jpeg,image/svg+xml" hidden />
+                  <p class="hint" id="cursorUploadHint">
+                    PNG with transparency works best. It's scaled to the size below and
+                    saved into your settings, so the original file can move or go away.
+                  </p>
+                </div>
+              </div>
+              <div class="collapse" id="cursorSizeWrap">
+                <div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <label class="field-label">Size</label>
+                    <span class="value-tag">
+                      <input type="number" id="cursorSizeInput" class="tag-input" min="12" max="64" step="1" /> px
+                    </span>
+                  </div>
+                  <input type="range" id="cursorSize" min="12" max="64" step="1" />
+                </div>
+              </div>
+              <p class="hint" id="cursorHint"></p>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Blur behind window</label>
+                  <p class="hint tight">Real desktop blur via DWM, not a fake gradient.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="blurEnabled" checked />
+                  <span class="track"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Acrylic</label>
+                  <p class="hint tight">Richer, grainier blur. Can make dragging feel laggy on Windows 10.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="acrylic" />
+                  <span class="track"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Window size</label>
+                  <p class="hint tight" id="windowSizeHint">—</p>
+                </div>
+                <button class="ghost-btn" id="btnResetWindow" type="button">Reset</button>
+              </div>
+              <p class="hint">Drag any edge to resize. Whatever you leave it at is remembered.</p>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <label class="field-label">Panel opacity</label>
+                <span class="value-tag"><span id="opacityValue">72</span>%</span>
+              </div>
+              <input type="range" id="opacity" min="25" max="100" step="1" />
+            </div>
+
+            <h2 class="group-title">About</h2>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Version <span id="appVersion">—</span></label>
+                  <p class="hint tight" id="updateStatus">Checked at launch.</p>
+                </div>
+                <button class="ghost-btn" id="btnCheckUpdate" type="button">Check for updates</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="stat-grid">
+                <div class="stat-cell">
+                  <span class="stat-cell-label">Clicks sent</span>
+                  <span class="stat-cell-value" id="statTotalClicks">0</span>
+                </div>
+                <div class="stat-cell">
+                  <span class="stat-cell-label">Time clicking</span>
+                  <span class="stat-cell-value" id="statActiveTime">0s</span>
+                </div>
+                <div class="stat-cell">
+                  <span class="stat-cell-label">Average CPU</span>
+                  <span class="stat-cell-value" id="statCpu">0.0%</span>
+                </div>
+              </div>
+              <div class="row-between tight-top">
+                <p class="hint tight">Counted since launch. CPU is averaged over that whole time.</p>
+                <button class="ghost-btn" id="btnResetStats" type="button">Reset</button>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <footer class="statusbar">
+        <span class="pill" id="statePill">Idle</span>
+        <span class="stat"><i id="statCpsLabel">Live</i><b id="statCps">0</b><u>cps</u></span>
+        <span class="stat"><i>Clicks</i><b id="statClicks">0</b></span>
+        <span class="stat"><i>Bind</i><b id="statBind">F6</b></span>
+        <span class="stat"><i>Via</i><b id="statDelivery">System</b></span>
+        <div class="status-spacer"></div>
+        <button class="ghost-btn" id="btnReset" type="button">Reset counter</button>
+      </footer>
+    </div>
+  </body>
+</html>
