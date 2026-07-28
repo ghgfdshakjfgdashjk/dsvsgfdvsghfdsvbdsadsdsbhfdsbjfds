@@ -395,6 +395,9 @@ struct Plan {
     scripted: bool,
 
     empty: bool,
+
+    dangling_inputs: Vec<win32::INPUT>,
+    dangling_msgs: Vec<sequence::Msg>,
 }
 
 fn post_messages_at(hwnd: win32::HWND, x: i32, y: i32, msgs: &[sequence::Msg]) {
@@ -479,6 +482,8 @@ fn build_plan(settings: &Profile) -> Plan {
     let scripted = sequence::has_waits(&steps);
     let emissions = sequence::emissions(&steps);
 
+    let (dangling_inputs, dangling_msgs) = sequence::dangling(&steps);
+
     Plan {
         unit_len,
         burst,
@@ -489,6 +494,8 @@ fn build_plan(settings: &Profile) -> Plan {
         emissions,
         scripted,
         empty,
+        dangling_inputs,
+        dangling_msgs,
     }
 }
 
@@ -633,7 +640,7 @@ fn worker(inner: Arc<Inner>) {
             };
 
             if hit_count || hit_time || hit_pixel {
-
+                release_dangling(&plan, &target);
                 inner.limit_latched.store(true, Ordering::Release);
                 inner.active.store(false, Ordering::Release);
                 inner.measured.store(0, Ordering::Relaxed);
@@ -750,9 +757,10 @@ fn worker(inner: Arc<Inner>) {
                     let mut cursor = due;
 
                     for emission in &plan.emissions {
-                        if !inner.active.load(Ordering::Relaxed) {
-                            break;
-                        }
+                        let stopping = !inner.active.load(Ordering::Relaxed)
+                            || inner.shutdown.load(Ordering::Relaxed)
+                            || inner.generation.load(Ordering::Relaxed) != generation;
+
                         match emission {
                             sequence::Emission::Fire { inputs, msgs } => match &target {
                                 Some(t) => {
@@ -764,6 +772,9 @@ fn worker(inner: Arc<Inner>) {
                                 }
                             },
                             sequence::Emission::Wait(ms) => {
+                                if stopping {
+                                    continue;
+                                }
                                 cursor += Duration::from_secs_f64(ms / 1000.0);
                                 settle(&mut cursor, spin);
                             }
@@ -877,7 +888,21 @@ fn worker(inner: Arc<Inner>) {
                 rate_units = 0;
             }
         }
+
+        release_dangling(&plan, &target);
     }
 
     win32::end_timer_period();
+}
+
+fn release_dangling(plan: &Plan, target: &Option<win32::Target>) {
+    if plan.dangling_inputs.is_empty() {
+        return;
+    }
+    match target {
+        Some(t) => post_messages_at(t.hwnd, t.x, t.y, &plan.dangling_msgs),
+        None => {
+            win32::send_inputs(&plan.dangling_inputs);
+        }
+    }
 }

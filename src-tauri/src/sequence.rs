@@ -382,6 +382,53 @@ pub fn parse(text: &str) -> Vec<Step> {
     steps
 }
 
+pub fn dangling(steps: &[Step]) -> (Vec<INPUT>, Vec<Msg>) {
+    let mut held_mouse: Vec<ButtonSpec> = Vec::new();
+    let mut held_keys: Vec<u16> = Vec::new();
+
+    for step in steps {
+        match step {
+            Step::MouseHalf { spec, press, .. } => {
+                if *press {
+                    if !held_mouse.iter().any(|s| s.down == spec.down) {
+                        held_mouse.push(*spec);
+                    }
+                } else {
+                    held_mouse.retain(|s| s.down != spec.down);
+                }
+            }
+            Step::KeyHalf { vk, press, .. } => {
+                if *press {
+                    if !held_keys.contains(vk) {
+                        held_keys.push(*vk);
+                    }
+                } else {
+                    held_keys.retain(|k| k != vk);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut inputs = Vec::new();
+    let mut msgs = Vec::new();
+
+    for spec in &held_mouse {
+        inputs.push(win32::mouse_event(spec, spec.up));
+        let (_, up, _) = mouse_messages(spec);
+        msgs.push(Msg::Mouse { msg: up, wparam: 0 });
+    }
+    for vk in &held_keys {
+        inputs.push(win32::key_event(*vk, true));
+        msgs.push(Msg::Key {
+            msg: win32::WM_KEYUP,
+            vk: *vk,
+        });
+    }
+
+    (inputs, msgs)
+}
+
 pub fn has_waits(steps: &[Step]) -> bool {
     steps.iter().any(Step::is_wait)
 }
