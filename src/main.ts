@@ -45,6 +45,14 @@ interface Profile {
   pixelRgb: number;
   pixelTolerance: number;
   pixelStopOn: string;
+  shakeEnabled: boolean;
+  shakePx: number;
+  shakeMs: number;
+}
+
+interface Preset {
+  name: string;
+  code: string;
 }
 
 interface Settings {
@@ -67,6 +75,7 @@ interface Settings {
   blurEnabled: boolean;
   acrylic: boolean;
   opacity: number;
+  presets: Preset[];
 }
 
 interface TargetInfo {
@@ -443,6 +452,9 @@ interface Crossbow {
   bindVk: number;
   crossbowSlot: number;
   swordSlot: number;
+  tacticalEnabled: boolean;
+  tacticalSlot: number;
+  secondSwitchMs: number;
   keyHoldMs: number;
   afterSwitchMs: number;
   clickHoldMs: number;
@@ -552,6 +564,10 @@ const cpsMinInput = el<HTMLInputElement>("cpsMinInput");
 const randomizeToggle = el<HTMLInputElement>("randomize");
 const jitterSlider = el<HTMLInputElement>("jitter");
 const jitterValue = el<HTMLInputElement>("jitterInput");
+const shakeToggle = el<HTMLInputElement>("shakeEnabled");
+const shakeWrap = el<HTMLDivElement>("shakeWrap");
+const shakePx = el<HTMLInputElement>("shakePx");
+const shakeMs = el<HTMLInputElement>("shakeMs");
 
 const dutyToggle = el<HTMLInputElement>("dutyEnabled");
 const dutyWrap = el<HTMLDivElement>("dutyWrap");
@@ -696,6 +712,11 @@ const bowBindToggle = el<HTMLInputElement>("bowBindEnabled");
 const bowBindWrap = el<HTMLDivElement>("bowBindWrap");
 const bowBindBtn = el<HTMLButtonElement>("btnBowBind");
 const bowBindLabel = el<HTMLSpanElement>("bowBindLabel");
+const bowSummary = el<HTMLParagraphElement>("bowSummary");
+const bowTactical = el<HTMLInputElement>("bowTactical");
+const bowTacticalWrap = el<HTMLDivElement>("bowTacticalWrap");
+const bowTacticalSlot = el<HTMLInputElement>("bowTacticalSlot");
+const bowSecondSwitch = el<HTMLInputElement>("bowSecondSwitch");
 const bowSlot = el<HTMLInputElement>("bowSlot");
 const bowSwordSlot = el<HTMLInputElement>("bowSwordSlot");
 const bowKeyHold = el<HTMLInputElement>("bowKeyHold");
@@ -714,6 +735,16 @@ const overlayY = el<HTMLInputElement>("overlayY");
 const overlayOnlyIn = el<HTMLInputElement>("overlayOnlyIn");
 const overlayNamesWrap = el<HTMLDivElement>("overlayNamesWrap");
 const overlayNames = el<HTMLInputElement>("overlayNames");
+
+const copyAllBtn = el<HTMLButtonElement>("btnCopyAll");
+const copySettingsBtn = el<HTMLButtonElement>("btnCopySettings");
+const copyClickerBtn = el<HTMLButtonElement>("btnCopyClicker");
+const shareBox = el<HTMLInputElement>("shareBox");
+const shareNote = el<HTMLElement>("shareNote");
+const importCodeBtn = el<HTMLButtonElement>("btnImportCode");
+const presetList = el<HTMLDivElement>("presetList");
+const presetName = el<HTMLInputElement>("presetName");
+const savePresetBtn = el<HTMLButtonElement>("btnSavePreset");
 
 const skyBindToggle = el<HTMLInputElement>("skyBindEnabled");
 const skyBindWrap = el<HTMLDivElement>("skyBindWrap");
@@ -1546,16 +1577,26 @@ function renderProfileTabs(running: boolean[] = []): void {
 
 const THEME_HINTS: Record<string, string> = {
   gradient:
-    "Ambient colour drawn from your accent, over whichever way Windows is set — light or dark.",
+    "Ambient colour drawn from your accent, light or dark to match Windows.",
+  "gradient-dark":
+    "Ambient colour drawn from your accent, always dark whatever Windows is set to.",
+  "gradient-light":
+    "Ambient colour drawn from your accent, always light whatever Windows is set to.",
   dark: "Flat dark. No gradient, no ambient colour.",
   light: "Flat light. No gradient, no ambient colour.",
 };
 
 const systemPrefersLight = window.matchMedia("(prefers-color-scheme: light)");
 
+// Light or dark, whoever gets to decide it.
 function resolvedThemeIsLight(): boolean {
-  if (settings.theme === "light") return true;
-  if (settings.theme === "dark") return false;
+  if (settings.theme === "light" || settings.theme === "gradient-light") {
+    return true;
+  }
+  if (settings.theme === "dark" || settings.theme === "gradient-dark") {
+    return false;
+  }
+  // plain "gradient" is the only one that hands the choice to Windows
   return systemPrefersLight.matches;
 }
 
@@ -1585,8 +1626,11 @@ function renderTheme(): void {
   const light = resolvedThemeIsLight();
   document.documentElement.dataset.theme = light ? "light" : "dark";
 
-  document.documentElement.dataset.surface =
-    settings.theme === "gradient" ? "gradient" : "flat";
+  document.documentElement.dataset.surface = settings.theme.startsWith(
+    "gradient",
+  )
+    ? "gradient"
+    : "flat";
 
   void invoke("set_theme_tint", { light }).catch(() => {
 
@@ -1644,6 +1688,11 @@ function renderAll(): void {
   jitterSlider.value = String(profile.jitter);
   jitterValue.value = trimNum(profile.jitter);
   paintRange(jitterSlider);
+
+  shakeToggle.checked = profile.shakeEnabled;
+  shakeWrap.classList.toggle("open", profile.shakeEnabled);
+  shakePx.value = trimNum(profile.shakePx);
+  shakeMs.value = trimNum(profile.shakeMs);
 
   sequenceToggle.checked = profile.sequenceEnabled;
   reveal(sequenceWrap, profile.sequenceEnabled);
@@ -1924,7 +1973,7 @@ function renderStatus(status: Status): void {
   }
 }
 
-const REPO_URL = "https://github.com/Boots3453/BootsAutoClicker";
+const REPO_URL = "https://github.com/Boots3453/Syntax";
 
 const SUGGEST_KINDS: Record<string, { label: string; prefix: string }> = {
   feature: { label: "Feature", prefix: "Feature" },
@@ -2887,6 +2936,131 @@ function wireDavey(): void {
   number(dvyBurstDuty, 5, 95, (v) => (davey.burstDuty = v));
 }
 
+function renderPresets(list: Preset[]): void {
+  presetList.replaceChildren();
+
+  list.forEach((preset, index) => {
+    const row = document.createElement("div");
+    row.className = "preset";
+
+    const name = document.createElement("span");
+    name.className = "preset-name";
+    name.textContent = preset.name;
+
+    const load = document.createElement("button");
+    load.className = "chip";
+    load.type = "button";
+    load.textContent = "Load";
+    load.addEventListener("click", () => void applyCode(preset.code));
+
+    // same two-step as deleting a clicker: the first press arms it, and it
+    // disarms itself if you walk away
+    const drop = document.createElement("button");
+    drop.className = "ghost-btn danger-btn";
+    drop.type = "button";
+    drop.textContent = "Delete";
+
+    let armed = false;
+    let timer: number | undefined;
+
+    const disarm = () => {
+      armed = false;
+      drop.textContent = "Delete";
+      drop.classList.remove("confirming");
+      window.clearTimeout(timer);
+    };
+
+    drop.addEventListener("click", () => {
+      if (!armed) {
+        armed = true;
+        drop.textContent = "Sure?";
+        drop.classList.add("confirming");
+        window.clearTimeout(timer);
+        timer = window.setTimeout(disarm, 4000);
+        return;
+      }
+
+      disarm();
+      void invoke<Preset[]>("delete_preset", { index })
+        .then(renderPresets)
+        .catch(() => {});
+    });
+
+    drop.addEventListener("mouseleave", () => {
+      if (armed) {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(disarm, 1200);
+      }
+    });
+
+    row.append(name, load, drop);
+    presetList.append(row);
+  });
+}
+
+/// Everything reads its settings at boot, so the simplest way to make a whole
+/// new configuration take hold everywhere is to boot again.
+async function applyCode(code: string): Promise<void> {
+  try {
+    await invoke("import_code", { code });
+    location.reload();
+  } catch (why) {
+    text(shareNote, String(why));
+  }
+}
+
+async function copyCode(scope: string, button: HTMLButtonElement): Promise<void> {
+  const was = button.textContent ?? "";
+  try {
+    const code = await invoke<string>("export_code", { scope });
+    await navigator.clipboard.writeText(code);
+    button.textContent = "Copied";
+  } catch {
+    button.textContent = "Could not copy";
+  }
+  window.setTimeout(() => {
+    button.textContent = was;
+  }, 1400);
+}
+
+function wireSharing(): void {
+  copyAllBtn.addEventListener("click", () => void copyCode("all", copyAllBtn));
+  copySettingsBtn.addEventListener("click", () =>
+    void copyCode("settings", copySettingsBtn),
+  );
+  copyClickerBtn.addEventListener("click", () => void copyCode("clicker", copyClickerBtn));
+
+  shareBox.addEventListener("input", () => {
+    const code = shareBox.value.trim();
+    if (code.length === 0) {
+      text(shareNote, "Paste a code to see what is in it.");
+      return;
+    }
+
+    void invoke<string>("describe_code", { code })
+      .then((what) => text(shareNote, `This code has ${what}.`))
+      .catch((why) => text(shareNote, String(why)));
+  });
+
+  importCodeBtn.addEventListener("click", () => {
+    const code = shareBox.value.trim();
+    if (code.length === 0) {
+      text(shareNote, "Nothing pasted yet.");
+      return;
+    }
+    void applyCode(code);
+  });
+
+  savePresetBtn.addEventListener("click", () => {
+    void invoke<Preset[]>("save_preset", { name: presetName.value })
+      .then((list) => {
+        presetName.value = "";
+        renderPresets(list);
+      })
+      .catch(() => {});
+  });
+}
+
 function pushOverlay(): void {
   void invoke<Overlay>("apply_overlay", { config: overlay }).catch(() => {});
 }
@@ -2960,6 +3134,18 @@ function renderCrossbow(): void {
   bowSlot.value = String(crossbow.crossbowSlot);
   bowSwordSlot.value = String(crossbow.swordSlot);
   bowKeyHold.value = String(crossbow.keyHoldMs);
+
+  bowTactical.checked = crossbow.tacticalEnabled;
+  bowTacticalWrap.classList.toggle("open", crossbow.tacticalEnabled);
+  bowTacticalSlot.value = String(crossbow.tacticalSlot);
+  bowSecondSwitch.value = String(crossbow.secondSwitchMs);
+
+  text(
+    bowSummary,
+    crossbow.tacticalEnabled
+      ? "Runs once per press: tactical crossbow, shoot, ordinary crossbow, shoot, back to your sword. This can share a key with a clicker — both will fire."
+      : "Runs once per press: swaps to the crossbow, shoots, swaps back to your sword. This can share a key with a clicker — both will fire.",
+  );
   bowAfterSwitch.value = String(crossbow.afterSwitchMs);
   bowClickHold.value = String(crossbow.clickHoldMs);
   bowAfterClick.value = String(crossbow.afterClickMs);
@@ -3019,7 +3205,15 @@ function wireCrossbow(): void {
     });
   };
 
+  bowTactical.addEventListener("change", () => {
+    crossbow.tacticalEnabled = bowTactical.checked;
+    renderCrossbow();
+    pushCrossbow();
+  });
+
   number(bowSlot, 1, 9, (v) => (crossbow.crossbowSlot = v));
+  number(bowTacticalSlot, 1, 9, (v) => (crossbow.tacticalSlot = v));
+  number(bowSecondSwitch, 0, 5000, (v) => (crossbow.secondSwitchMs = v));
   number(bowSwordSlot, 1, 9, (v) => (crossbow.swordSlot = v));
   number(bowKeyHold, 0, 2000, (v) => (crossbow.keyHoldMs = v));
   number(bowAfterSwitch, 0, 5000, (v) => (crossbow.afterSwitchMs = v));
@@ -3027,7 +3221,103 @@ function wireCrossbow(): void {
   number(bowAfterClick, 0, 5000, (v) => (crossbow.afterClickMs = v));
 }
 
-/** Themed steppers, scroll-to-change, and no reaction to the arrow keys. */
+/**
+ * Reset buttons, found by `data-reset` rather than listed one at a time.
+ *
+ * Each one asks Rust for that macro's factory settings, so no default is
+ * written down twice and none of them can drift out of step with the code
+ * that actually uses them.
+ */
+function wireResets(): void {
+  // Settings are copied into the existing object rather than swapped for a
+  // new one, so anything else already holding a reference still sees the
+  // change.
+  const restore: Record<
+    string,
+    (fresh: Record<string, unknown>) => void
+  > = {
+    fisher: (fresh) => {
+      Object.assign(fisher, fresh, keepBind(fisher));
+      renderFisher();
+      pushFisher();
+    },
+    gumdrop: (fresh) => {
+      Object.assign(gumdrop, fresh, keepBind(gumdrop));
+      renderGumdrop();
+      pushGumdrop();
+    },
+    skywars: (fresh) => {
+      Object.assign(skywars, fresh, keepBind(skywars));
+      renderSkywars();
+      pushSkywars();
+    },
+    davey: (fresh) => {
+      Object.assign(davey, fresh, keepBind(davey));
+      renderDavey();
+      pushDavey();
+    },
+    crossbow: (fresh) => {
+      Object.assign(crossbow, fresh, keepBind(crossbow));
+      renderCrossbow();
+      pushCrossbow();
+    },
+    overlay: (fresh) => {
+      Object.assign(overlay, fresh);
+      renderOverlay();
+      pushOverlay();
+    },
+  };
+
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-reset]")
+    .forEach((button) => {
+      const which = button.dataset.reset ?? "";
+      const apply = restore[which];
+      if (!apply) return;
+
+      let armed = false;
+      let timer: number | undefined;
+
+      const disarm = () => {
+        armed = false;
+        button.textContent = "Reset";
+        button.classList.remove("confirming");
+        window.clearTimeout(timer);
+      };
+
+      button.addEventListener("click", () => {
+        // Nothing here is recoverable once it is gone, so it takes two
+        // presses, the same as deleting a saved profile does.
+        if (!armed) {
+          armed = true;
+          button.textContent = "Sure?";
+          button.classList.add("confirming");
+          window.clearTimeout(timer);
+          timer = window.setTimeout(disarm, 4000);
+          return;
+        }
+
+        disarm();
+        void invoke<Record<string, unknown>>("macro_defaults", { which })
+          .then(apply)
+          .catch(() => {});
+      });
+
+      button.addEventListener("mouseleave", () => {
+        if (armed) disarm();
+      });
+    });
+}
+
+/** The hotkey is yours, not part of the tuning, so a reset leaves it alone. */
+function keepBind(current: { bindEnabled: boolean; bindVk: number }): {
+  bindEnabled: boolean;
+  bindVk: number;
+} {
+  return { bindEnabled: current.bindEnabled, bindVk: current.bindVk };
+}
+
+/** Scroll to change, select on click, and no reaction to the arrow keys. */
 function wireNumberInputs(): void {
   const nudge = (input: HTMLInputElement, by: number) => {
     const now = Number(input.value) || 0;
@@ -3040,11 +3330,6 @@ function wireNumberInputs(): void {
     input.value = String(next);
     input.dispatchEvent(new Event("change"));
   };
-
-  const arrow = (up: boolean) =>
-    `<svg viewBox="0 0 8 5" xmlns="http://www.w3.org/2000/svg"><path d="${
-      up ? "M4 0 8 5H0z" : "M4 5 0 0h8z"
-    }"/></svg>`;
 
   document
     .querySelectorAll<HTMLInputElement>('.macro-body input[type="number"]')
@@ -3068,25 +3353,9 @@ function wireNumberInputs(): void {
         { passive: false },
       );
 
-      const box = document.createElement("span");
-      box.className = "stepper";
-
-      for (const up of [true, false]) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.tabIndex = -1;
-        button.innerHTML = arrow(up);
-        button.addEventListener("mousedown", (event) => {
-          // keep the press off the button itself, then park focus on the
-          // field so nothing else is left holding a focus ring
-          event.preventDefault();
-          nudge(input, up ? step() : -step());
-          input.focus();
-        });
-        box.appendChild(button);
-      }
-
-      input.after(box);
+      // Clicking a field selects what is in it, so typing a new value
+      // replaces the old one instead of landing beside a digit.
+      input.addEventListener("focus", () => input.select());
     });
 }
 
@@ -3395,7 +3664,7 @@ function wireSegments(): void {
 
   themeGroup.querySelectorAll<HTMLButtonElement>(".seg").forEach((seg) => {
     seg.addEventListener("click", () => {
-      settings.theme = seg.dataset.value ?? "gradient";
+      settings.theme = seg.dataset.value ?? "gradient-dark";
       renderTheme();
       push();
     });
@@ -3608,6 +3877,28 @@ function wireToggles(): void {
     renderCps();
     push();
   });
+
+  shakeToggle.addEventListener("change", () => {
+    profile.shakeEnabled = shakeToggle.checked;
+    renderAll();
+    push();
+  });
+
+  const shakeField = (
+    input: HTMLInputElement,
+    low: number,
+    high: number,
+    apply: (value: number) => void,
+  ) => {
+    input.addEventListener("change", () => {
+      apply(Math.min(high, Math.max(low, Number(input.value) || low)));
+      renderAll();
+      push();
+    });
+  };
+
+  shakeField(shakePx, 1, 400, (v) => (profile.shakePx = v));
+  shakeField(shakeMs, 1, 60000, (v) => (profile.shakeMs = v));
 
   wirePair(
     jitterSlider,
@@ -4163,6 +4454,7 @@ async function boot(): Promise<void> {
   davey = await invoke<Davey>("get_davey");
   crossbow = await invoke<Crossbow>("get_crossbow");
   overlay = await invoke<Overlay>("get_overlay");
+  renderPresets(settings.presets ?? []);
 
   document.querySelectorAll<HTMLInputElement>("input").forEach(noAutofill);
 
@@ -4218,6 +4510,8 @@ async function boot(): Promise<void> {
   wireDavey();
   wireCrossbow();
   wireOverlay();
+  wireSharing();
+  wireResets();
   wireNumberInputs();
   wireOptimize();
   wireSuggest();

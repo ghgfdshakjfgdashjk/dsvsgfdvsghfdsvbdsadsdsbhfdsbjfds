@@ -3,7 +3,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const REPO = "Boots3453/BootsAutoClicker";
+const REPO = "Boots3453/Syntax";
 
 const config = JSON.parse(readFileSync(join(root, "src-tauri/tauri.conf.json"), "utf8"));
 const { version } = config;

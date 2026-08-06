@@ -123,6 +123,7 @@ extern "system" {
     fn ScreenToClient(hWnd: HWND, lpPoint: *mut POINT) -> i32;
     fn GetCursorPos(lpPoint: *mut POINT) -> i32;
     fn SetCursorPos(x: i32, y: i32) -> i32;
+    fn GetClipCursor(lpRect: *mut RECT) -> i32;
     fn IsWindow(hWnd: HWND) -> i32;
     fn GetAncestor(hwnd: HWND, gaFlags: u32) -> HWND;
     fn GetWindowRect(hWnd: HWND, lpRect: *mut RECT) -> i32;
@@ -1491,6 +1492,82 @@ pub fn move_cursor(x: i32, y: i32) {
     unsafe {
         SetCursorPos(x, y);
     }
+}
+
+/// Is the pointer sitting on the middle of the window in front?
+///
+/// This is the giveaway for first person. A game that locks the mouse puts it
+/// back in the centre of its own window every frame, and reads how far it had
+/// moved as how far you looked. So a pointer that keeps turning up in the
+/// middle of the front window is a pointer the game is holding.
+///
+/// `slack` is how far off centre still counts. Ask for a loose one before
+/// moving anything, since the pointer will not be sitting exactly on centre
+/// between frames, and a tight one straight after a move you made yourself,
+/// where landing back on centre means something put it there.
+pub fn cursor_centred(slack: i32) -> bool {
+    unsafe {
+        let window = GetForegroundWindow();
+        if window == 0 {
+            return false;
+        }
+
+        let mut client = RECT::default();
+        if GetClientRect(window, &mut client) == 0 {
+            return false;
+        }
+
+        // a window too small to play in cannot tell us anything
+        if client.right < 200 || client.bottom < 200 {
+            return false;
+        }
+
+        let mut point = POINT::default();
+        if GetCursorPos(&mut point) == 0 || ScreenToClient(window, &mut point) == 0 {
+            return false;
+        }
+
+        (point.x - client.right / 2).abs() <= slack && (point.y - client.bottom / 2).abs() <= slack
+    }
+}
+
+/// Has something taken the pointer away from you?
+///
+/// Two signs, either of which is enough, because games do not all go about it
+/// the same way:
+///
+/// * The pointer keeps landing on the centre of the front window. This is the
+///   one that catches Roblox, which locks the mouse by re-centring it rather
+///   than by fencing it in.
+/// * The pointer is fenced into a rectangle smaller than the desktop. That
+///   fence is `ClipCursor`, which some games use instead.
+///
+/// A hidden pointer sounds like it belongs on that list and does not. Windows
+/// counts cursor visibility per input queue, so a game hiding its own pointer
+/// need not read as hidden from out here -- and worse, plenty of ordinary
+/// things hide it, including Windows itself while you type. It says "a game
+/// has the mouse" far too often to be worth asking.
+pub fn cursor_locked(slack: i32) -> bool {
+    if cursor_centred(slack) {
+        return true;
+    }
+
+    unsafe {
+        let mut clip = RECT::default();
+        if GetClipCursor(&mut clip) != 0 {
+            let width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+            let height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+            // a fence at all, rather than the whole desktop
+            if width > 0
+                && height > 0
+                && (clip.right - clip.left < width || clip.bottom - clip.top < height)
+            {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 /// An absolute move carrying the destination, so a click sent alongside it

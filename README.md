@@ -144,7 +144,9 @@ screen or driving hotbar slots.
   register.
 - **Davey** — holds a key, swaps to the pickaxe while it's still down, then
   clicks flat out the instant it's released.
-- **Crossbow** — swap to the crossbow, shoot, swap back to the sword.
+- **Crossbow** — swap to the crossbow, shoot, swap back to the sword. Turn on
+  **Tactical crossbow** and it fires that one first, then the ordinary one, in
+  the same press.
 
 Two details that turned out to matter across all of them. A game reads the mouse
 once a frame, so a press and release sent in the same instant can fall between

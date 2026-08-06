@@ -45,11 +45,12 @@ impl Default for SkywarsSettings {
         SkywarsSettings {
             bind_enabled: false,
             bind_vk: 0,
-            click_hold_ms: 12,
-            settle_ms: 6,
-            between_ms: 12,
+            // Tuned against a real chest rather than guessed at.
+            click_hold_ms: 1,
+            settle_ms: 7,
+            between_ms: 7,
             clicks_per_item: 2,
-            retry_gap_ms: 10,
+            retry_gap_ms: 1,
             restore_cursor: true,
         }
     }

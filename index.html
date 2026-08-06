@@ -1,5 +1,7 @@
 <!doctype html>
-<html lang="en">
+<!-- Matches the default theme, so the first painted frame is already the
+     right one. Whatever is actually saved replaces both a moment later. -->
+<html lang="en" data-theme="dark" data-surface="gradient">
   <head>
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="/src/styles.css" />
@@ -283,6 +285,45 @@
               </div>
               <input type="range" id="jitter" min="0" max="95" step="0.1" />
               <p class="hint">Wobbles each gap by ± this much, so the spacing is never perfectly even.</p>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Cursor shake</label>
+                  <p class="hint tight">
+                    Shakes your view while this clicker runs, but only in first
+                    person.
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="shakeEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+
+              <div class="collapse" id="shakeWrap">
+                <div>
+                  <div class="search-grid" style="margin-top: 11px">
+                    <span class="value-tag">
+                      Distance (px)
+                      <input type="number" id="shakePx" class="tag-input" min="1" max="400" step="1" />
+                    </span>
+                    <span class="value-tag">
+                      Hold (ms)
+                      <input type="number" id="shakeMs" class="tag-input" min="1" max="60000" step="1" />
+                    </span>
+                  </div>
+                  <p class="hint">
+                    The camera swings out, waits for the game to draw a frame, then
+                    comes straight back — so it shakes instead of drifting, and your
+                    aim ends up exactly where it started. Hold is that wait; too
+                    short and the two halves cancel before anything is drawn. Only
+                    acts while the game has hold of your cursor, the way first
+                    person does.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <h2 class="group-title">Click</h2>
@@ -778,10 +819,6 @@
                 are colours it didn't recognise.
               </p>
               <pre class="trace" id="fisherTrace">Nothing recorded yet.</pre>
-              <p class="hint">
-                Press <b>F9</b> at any time to save a picture of exactly what the macro
-                is looking at. It lands on your Desktop as <code>fisher-….bmp</code>.
-              </p>
             </div>
 
             <div class="card">
@@ -791,6 +828,16 @@
                 slider on it. Anything switched off is cancelled with Space and the rod
                 goes straight back out.
               </p>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Defaults</label>
+                  <p class="hint tight">Every setting here back to stock. Your hotkey is kept.</p>
+                </div>
+                <button class="ghost-btn" data-reset="fisher" type="button">Reset</button>
+              </div>
             </div>
             </div>
 
@@ -896,6 +943,10 @@
                   </div>
                   <button class="ghost-btn" id="btnDropRun" type="button">Run once</button>
                 </div>
+                <div class="row-between" style="margin-top: 11px">
+                  <p class="hint tight">Every setting here back to stock. Your hotkey is kept.</p>
+                  <button class="ghost-btn" data-reset="gumdrop" type="button">Reset</button>
+                </div>
                 <p class="hint">
                   One press swaps to the gumdrop, places it, waits, swaps to the pickaxe
                   and breaks it. It runs once per press — not a toggle, and not held.
@@ -976,6 +1027,10 @@
                     <p class="hint tight" id="skyNote">Not run yet</p>
                   </div>
                   <button class="ghost-btn" id="btnSkyRun" type="button">Run once</button>
+                </div>
+                <div class="row-between" style="margin-top: 11px">
+                  <p class="hint tight">Every setting here back to stock. Your hotkey is kept.</p>
+                  <button class="ghost-btn" data-reset="skywars" type="button">Reset</button>
                 </div>
                 <p class="hint">
                   Open the chest first, then press the key. It finds the grid on screen,
@@ -1083,6 +1138,10 @@
                   </div>
                   <button class="ghost-btn" id="btnDvyRun" type="button">Run once</button>
                 </div>
+                <div class="row-between" style="margin-top: 11px">
+                  <p class="hint tight">Every setting here back to stock. Your hotkey is kept.</p>
+                  <button class="ghost-btn" data-reset="davey" type="button">Reset</button>
+                </div>
               </div>
             </div>
 
@@ -1116,10 +1175,47 @@
                     </button>
                   </div>
                 </div>
-                <p class="hint">
+                <p class="hint" id="bowSummary">
                   Runs once per press: swaps to the crossbow, shoots, swaps back to your
                   sword. This can share a key with a clicker — both will fire.
                 </p>
+              </div>
+
+              <div class="card">
+                <div class="row-between">
+                  <div>
+                    <label class="field-label">Tactical crossbow</label>
+                    <p class="hint tight">
+                      Fire the tactical one first, then the ordinary one, in the same
+                      press.
+                    </p>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="bowTactical" />
+                    <span class="track"></span>
+                  </label>
+                </div>
+                <div class="collapse" id="bowTacticalWrap">
+                  <div>
+                    <div class="search-grid" style="margin-top: 11px">
+                      <span class="value-tag">
+                        Tactical slot
+                        <input type="number" id="bowTacticalSlot" class="tag-input" min="1" max="9" step="1" />
+                      </span>
+                      <span class="value-tag">
+                        Before the second shot
+                        <input type="number" id="bowSecondSwitch" class="tag-input" min="0" max="5000" step="5" />
+                      </span>
+                    </div>
+                    <p class="hint">
+                      The second shot waits this long after swapping, instead of the
+                      <b>Before shooting</b> below. Coming off a shot is not the same as
+                      coming off your sword — the first weapon is still finishing its
+                      animation, so the crossbow usually needs longer here. Raise it if
+                      only the tactical shot lands.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div class="card">
@@ -1170,6 +1266,10 @@
                     <p class="hint tight" id="bowRuns">Not run yet</p>
                   </div>
                   <button class="ghost-btn" id="btnBowRun" type="button">Run once</button>
+                </div>
+                <div class="row-between" style="margin-top: 11px">
+                  <p class="hint tight">Every setting here back to stock. Your hotkey is kept.</p>
+                  <button class="ghost-btn" data-reset="crossbow" type="button">Reset</button>
                 </div>
               </div>
             </div>
@@ -1450,12 +1550,14 @@
               </p>
             </div>
 
-            <div class="card">
+            <div class="card span-2">
               <label class="field-label">Theme</label>
               <div class="segmented wide" id="themeGroup">
-                <button data-value="gradient" class="seg active" type="button">Gradient</button>
-                <button data-value="dark" class="seg" type="button">Dark</button>
-                <button data-value="light" class="seg" type="button">Light</button>
+                <button data-value="gradient-dark" class="seg active" type="button">Gradient dark</button>
+                <button data-value="gradient-light" class="seg" type="button">Gradient light</button>
+                <button data-value="gradient" class="seg" type="button">Gradient auto</button>
+                <button data-value="dark" class="seg" type="button">Flat dark</button>
+                <button data-value="light" class="seg" type="button">Flat light</button>
               </div>
               <p class="hint" id="themeHint">Follows your Windows app colour setting.</p>
             </div>
@@ -1654,6 +1756,64 @@
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div class="row-between" style="margin-top: 11px">
+                <p class="hint tight">Overlay settings back to stock.</p>
+                <button class="ghost-btn" data-reset="overlay" type="button">Reset</button>
+              </div>
+            </div>
+
+            <div class="card span-2">
+              <label class="field-label">Share code</label>
+              <p class="hint tight">
+                A code carries your settings. Paste someone else's in and you get
+                theirs. Your cursor image, window size and saved profiles stay yours
+                whichever code you paste — and a code from the middle button leaves
+                your clickers alone too, so you can take someone's macros and look
+                without losing your speeds.
+              </p>
+
+              <div class="chip-row" style="margin-top: 11px">
+                <button class="chip" id="btnCopyAll" type="button">Copy everything</button>
+                <button class="chip" id="btnCopySettings" type="button">Copy everything but clickers</button>
+                <button class="chip" id="btnCopyClicker" type="button">Copy clickers only</button>
+              </div>
+
+              <input
+                type="text"
+                id="shareBox"
+                class="profile-name"
+                spellcheck="false"
+                placeholder="SYN1-..."
+                style="margin-top: 11px; width: 100%"
+              />
+
+              <div class="row-between tight-top">
+                <p class="hint tight" id="shareNote">Paste a code to see what is in it.</p>
+                <button class="ghost-btn" id="btnImportCode" type="button">Apply</button>
+              </div>
+            </div>
+
+            <div class="card span-2">
+              <label class="field-label">Saved configurations</label>
+              <p class="hint tight">
+                Keep several whole setups and switch between them. Saving under a name
+                you already used replaces it.
+              </p>
+
+              <div class="preset-list" id="presetList"></div>
+
+              <div class="row-between tight-top">
+                <input
+                  type="text"
+                  id="presetName"
+                  class="profile-name"
+                  spellcheck="false"
+                  placeholder="Name this setup"
+                  style="flex: 1 1 auto; margin-right: 10px"
+                />
+                <button class="ghost-btn" id="btnSavePreset" type="button">Save current</button>
               </div>
             </div>
 

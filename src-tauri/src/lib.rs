@@ -9,6 +9,8 @@ mod recorder;
 mod sequence;
 mod crossbow;
 mod overlay;
+mod shake;
+mod share;
 mod davey;
 mod skywars;
 mod settings;
@@ -33,7 +35,8 @@ const FRAME_TINT_FLAT_DARK: (u8, u8, u8) = (20, 21, 25);
 const FRAME_TINT_FLAT_LIGHT: (u8, u8, u8) = (245, 246, 249);
 
 fn frame_tint(settings: &Settings, light: bool) -> (u8, u8, u8) {
-    if settings.theme != "gradient" {
+    // every gradient theme tints the frame; only the flat ones do not
+    if !settings.theme.starts_with("gradient") {
         return if light {
             FRAME_TINT_FLAT_LIGHT
         } else {
@@ -330,9 +333,92 @@ fn get_crossbow_status(state: State<AppState>) -> crossbow::CrossbowStatus {
     state.crossbow.status()
 }
 
+/// Factory settings for one macro, as plain JSON.
+///
+/// One command for all of them, rather than five that each return their own
+/// type, so that a default is written down once -- in the `Default` impl next
+/// to the code that uses it -- and never copied into the interface where the
+/// two could drift apart.
+///
+/// The hotkey is deliberately not included. It is the one setting that is not
+/// a tuning knob, and clearing it would leave the macro silently unreachable,
+/// which reads as a broken reset rather than a thorough one. The caller keeps
+/// whatever bind is already set.
+#[tauri::command]
+fn macro_defaults(which: String) -> Result<serde_json::Value, String> {
+    let value = match which.as_str() {
+        "fisher" => serde_json::to_value(fisher::FisherSettings::default()),
+        "gumdrop" => serde_json::to_value(gumdrop::GumdropSettings::default()),
+        "skywars" => serde_json::to_value(skywars::SkywarsSettings::default()),
+        "davey" => serde_json::to_value(davey::DaveySettings::default()),
+        "crossbow" => serde_json::to_value(crossbow::CrossbowSettings::default()),
+        "overlay" => serde_json::to_value(overlay::OverlaySettings::default()),
+        other => return Err(format!("no macro called {other}")),
+    };
+
+    value.map_err(|err| err.to_string())
+}
+
 #[tauri::command]
 fn fire_crossbow(state: State<AppState>) {
     state.crossbow.fire();
+}
+
+#[tauri::command]
+fn export_code(app: AppHandle, scope: String) -> String {
+    share::export(&settings::load(&app), &scope)
+}
+
+#[tauri::command]
+fn describe_code(code: String) -> Result<String, String> {
+    share::describe(&code)
+}
+
+/// Read a code in and make it the live configuration.
+#[tauri::command]
+fn import_code(app: AppHandle, code: String) -> Result<settings::Settings, String> {
+    let current = settings::load(&app);
+    let next = share::import(&code, &current)?;
+
+    settings::save(&app, &next)?;
+    overlay::apply(&app, &next.overlay);
+
+    Ok(next)
+}
+
+#[tauri::command]
+fn save_preset(app: AppHandle, name: String) -> Vec<settings::Preset> {
+    let mut current = settings::load(&app);
+    let code = share::export(&current, "all");
+
+    let name = {
+        let trimmed = name.trim();
+        if trimmed.is_empty() {
+            format!("Preset {}", current.presets.len() + 1)
+        } else {
+            trimmed.to_string()
+        }
+    };
+
+    // saving under a name you already used replaces it rather than piling up
+    match current.presets.iter_mut().find(|p| p.name == name) {
+        Some(existing) => existing.code = code,
+        None => current.presets.push(settings::Preset { name, code }),
+    }
+
+    let cleaned = current.sanitised();
+    let _ = settings::save(&app, &cleaned);
+    cleaned.presets
+}
+
+#[tauri::command]
+fn delete_preset(app: AppHandle, index: usize) -> Vec<settings::Preset> {
+    let mut current = settings::load(&app);
+    if index < current.presets.len() {
+        current.presets.remove(index);
+    }
+    let _ = settings::save(&app, &current);
+    current.presets
 }
 
 #[tauri::command]
@@ -416,7 +502,7 @@ fn launch_tool(target: String) -> Result<(), String> {
 
 #[tauri::command]
 fn open_repo_url(url: String) -> Result<(), String> {
-    const REPO: &str = "https://github.com/Boots3453/BootsAutoClicker";
+    const REPO: &str = "https://github.com/Boots3453/Syntax";
 
     if !url.starts_with(REPO) {
         return Err("that link doesn't point at the project's repository".into());
@@ -736,7 +822,10 @@ pub fn run() {
             recorder::attach(Arc::clone(&record));
             let launched = Instant::now();
 
-            let light = initial.theme == "light";
+            // Only a first guess for the frame, before the webview is up to
+            // tell us what Windows is set to. A theme that defers to Windows
+            // starts dark and is corrected a moment later.
+            let light = matches!(initial.theme.as_str(), "light" | "gradient-light");
 
             app.manage(AppState {
                 clickers: Arc::clone(&clickers),
@@ -822,9 +911,15 @@ pub fn run() {
             get_crossbow,
             apply_crossbow,
             get_crossbow_status,
+            macro_defaults,
             fire_crossbow,
             get_overlay,
             apply_overlay,
+            export_code,
+            import_code,
+            describe_code,
+            save_preset,
+            delete_preset,
             begin_position_capture,
             cursor_position,
             sample_pixel,

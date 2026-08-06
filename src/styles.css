@@ -25,6 +25,12 @@
   --titlebar-b: hsl(var(--acc-h) calc(66% * var(--sat)) 26% / 0.96);
   --titlebar-c: hsl(var(--acc-h) calc(64% * var(--sat)) 22% / 0.6);
 
+  /* Used instead of the three above once there is a gradient to sit on. Thin
+     enough to read as shading on the same surface rather than as a lid over
+     it, and fading out downwards so there is no line where it ends. */
+  --titlebar-veil-top: hsl(var(--acc-h) calc(58% * var(--sat)) 9% / 0.34);
+  --titlebar-veil-bottom: hsl(var(--acc-h) calc(58% * var(--sat)) 9% / 0.08);
+
   --text: #eef4ff;
   --text-dim: #adbde0;
   --text-faint: #8194ba;
@@ -68,6 +74,13 @@
   --titlebar-a: hsl(var(--acc-h) calc(78% * var(--sat)) 90% / 0.97);
   --titlebar-b: hsl(var(--acc-h) calc(76% * var(--sat)) 87% / 0.96);
   --titlebar-c: hsl(var(--acc-h) calc(74% * var(--sat)) 85% / 0.6);
+
+  /* Lifting rather than shading, since the surface underneath is already
+     bright. Weaker than the dark one: on a pale gradient it takes far less
+     to separate the bar from the body, and any more turns it back into the
+     white band this replaced. */
+  --titlebar-veil-top: hsl(var(--acc-h) calc(70% * var(--sat)) 100% / 0.30);
+  --titlebar-veil-bottom: hsl(var(--acc-h) calc(70% * var(--sat)) 100% / 0.05);
 
   --text: #10203f;
   --text-dim: #495d84;
@@ -253,6 +266,21 @@ body {
     var(--titlebar-c) 100%
   );
   transition: background 0.3s ease;
+}
+
+/* On a gradient the title bar is not a surface of its own -- it is the top of
+   the one below it. Painting it nearly opaque cut a hard band across the
+   window, which went unnoticed on dark and was glaring on light, where the bar
+   came out almost white against a blue body.
+
+   So let the shell's gradient and its drifting blobs run all the way to the
+   top, and keep only a thin veil for the text and buttons to sit on. */
+[data-surface="gradient"] .titlebar {
+  background: linear-gradient(
+    180deg,
+    var(--titlebar-veil-top) 0%,
+    var(--titlebar-veil-bottom) 100%
+  );
 }
 
 .brand {
@@ -1584,56 +1612,53 @@ input:disabled {
   text-align: right;
 }
 
-.macro-body .tag-input {
-  width: 52px !important;
-}
+/* Macro settings are the ones you actually sit and tune, so the number gets
+   to be a field in its own right rather than a few digits wedged into the end
+   of a label.
 
-/* Windows draws its own number spinner as a white box that cannot be
-   themed, so it stays hidden and these take its place. */
-.stepper {
-  display: inline-flex;
+   The pair of arrows that used to sit here were 17x10 each -- under the 24px
+   anyone can reliably hit, and stacked, so the two targets were adjacent and
+   easy to confuse. The field below is the full width of its column and 34px
+   tall, which is a target you cannot miss, and the scroll wheel still steps
+   the value for anyone who liked nudging it. */
+.macro-body .value-tag {
   flex-direction: column;
-  gap: 2px;
-  margin-left: 7px;
-  align-self: center;
-}
-
-.stepper button {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 17px;
-  height: 10px;
+  align-items: stretch;
+  gap: 6px;
   padding: 0;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--stroke);
-  border-radius: 4px;
-  background: var(--glass);
-  color: var(--acc-200);
+  border: 0;
+  background: none;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+
+.macro-body .tag-input {
+  width: 100% !important;
+  height: 34px;
+  padding: 0 11px !important;
+  border: 1px solid var(--stroke) !important;
+  border-radius: 9px;
+  background: rgba(var(--sunken), 0.55) !important;
+  color: var(--text) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  text-align: left;
   transition:
-    background 120ms ease,
-    border-color 120ms ease,
-    color 120ms ease;
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
 }
 
-.stepper button:hover {
-  background: var(--glass-hi);
-  border-color: var(--acc-400);
-  color: var(--text);
+.macro-body .tag-input:hover {
+  border-color: var(--acc-400) !important;
+  background: rgba(var(--sunken), 0.72) !important;
 }
 
-.stepper button:active {
-  background: var(--acc-600);
-  color: #fff;
-}
-
-.stepper svg {
-  width: 7px;
-  height: 4px;
-  display: block;
-  fill: currentColor;
+.macro-body .tag-input:focus {
+  border-color: var(--acc-400) !important;
+  background: rgba(var(--sunken), 0.78) !important;
+  box-shadow: 0 0 0 3px hsl(var(--acc-h) calc(100% * var(--sat)) 60% / 0.2) !important;
 }
 
 /* Windows draws a white ring around whatever holds focus. Nothing here
@@ -1651,11 +1676,6 @@ button:focus-visible,
 .nav-item:focus-visible {
   outline: 2px solid var(--acc-400);
   outline-offset: 2px;
-}
-
-.stepper button:focus,
-.stepper button:focus-visible {
-  outline: none;
 }
 
 .tag-input:focus {
@@ -2373,4 +2393,35 @@ code {
 .credit-where {
   font-size: 11px;
   color: var(--text-faint);
+}
+
+.preset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.preset-list:empty {
+  display: none;
+}
+
+.preset {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--stroke);
+  background: rgba(var(--sunken), 0.42);
+}
+
+.preset-name {
+  flex: 1 1 auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -108,7 +108,6 @@ pub fn spawn(
             let mut auto_was_down = false;
             let mut panic_was_down = false;
             let mut fish_was_down = false;
-            let mut shot_was_down = false;
             let mut drop_was_down = false;
             let mut sky_was_down = false;
             let mut dvy_was_down = false;
@@ -118,6 +117,7 @@ pub fn spawn(
             let mut last_push = Instant::now();
             let mut last_guard_check = Instant::now();
             let mut guard_state = false;
+            let mut shake = crate::shake::Shake::new();
 
             let mut engines = clickers.snapshot();
             let mut roster = clickers.roster();
@@ -140,6 +140,7 @@ pub fn spawn(
                 }
 
                 if clickers.is_closing() {
+                    shake.rest();
                     break;
                 }
                 bind_was_down.resize(engines.len(), false);
@@ -172,7 +173,6 @@ pub fn spawn(
                     }
                     auto_was_down = true;
                     fish_was_down = true;
-                    shot_was_down = true;
                     drop_was_down = true;
                     sky_was_down = true;
                     dvy_was_down = true;
@@ -298,13 +298,6 @@ pub fn spawn(
                 }
                 bow_was_down = bow_down;
 
-                let shot_down = win32::bind_held(0x78);
-                if shot_down && !shot_was_down {
-                    let _ = fisher.snapshot();
-                    let _ = app.emit("fisher-status", fisher.status());
-                }
-                shot_was_down = shot_down;
-
                 let panic_vk = shared.panic_vk.load(Ordering::Relaxed);
                 let panic_down = win32::bind_held(panic_vk);
                 if panic_down && !panic_was_down {
@@ -323,6 +316,13 @@ pub fn spawn(
                 } else {
                     idle_tick
                 };
+
+                // Only the clicker you are actually running gets to move the
+                // pointer, so two of them can never fight over it.
+                match engines.iter().find(|e| e.is_active()) {
+                    Some(live) => shake.tick(true, &live.settings()),
+                    None => shake.rest(),
+                }
 
                 if last_visibility_check.elapsed() >= Duration::from_millis(500) {
                     last_visibility_check = Instant::now();

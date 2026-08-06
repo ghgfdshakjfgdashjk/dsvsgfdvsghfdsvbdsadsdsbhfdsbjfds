@@ -90,6 +90,16 @@ pub struct Profile {
     pub pixel_tolerance: f64,
 
     pub pixel_stop_on: String,
+
+    /// Shake the view while this clicker runs, in first person only.
+    pub shake_enabled: bool,
+    /// How far each swing moves the mouse, in pixels. A locked cursor turns
+    /// that into how far the camera goes.
+    pub shake_px: f64,
+    /// How long the camera stays swung out before it is brought back, which
+    /// is also the pause before the next swing. Long enough for the game to
+    /// draw a frame, or the pair cancels before anything is rendered.
+    pub shake_ms: f64,
 }
 
 impl Default for Profile {
@@ -135,6 +145,9 @@ impl Default for Profile {
             points: Vec::new(),
             sequence_enabled: false,
             sequence: String::new(),
+            shake_enabled: false,
+            shake_px: 15.0,
+            shake_ms: 17.0,
         }
     }
 }
@@ -202,7 +215,36 @@ impl Profile {
 
         self.points.truncate(16);
         self.points.retain(|p| p.x.is_finite() && p.y.is_finite());
+
+        if !self.shake_px.is_finite() {
+            self.shake_px = 15.0;
+        }
+        self.shake_px = self.shake_px.clamp(1.0, 400.0);
+
+        if !self.shake_ms.is_finite() {
+            self.shake_ms = 17.0;
+        }
+        self.shake_ms = self.shake_ms.clamp(1.0, 60_000.0);
+
         self
+    }
+}
+
+/// A whole saved configuration, kept as a share code so saving and sharing
+/// are the same thing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Preset {
+    pub name: String,
+    pub code: String,
+}
+
+impl Default for Preset {
+    fn default() -> Self {
+        Preset {
+            name: "Preset".into(),
+            code: String::new(),
+        }
     }
 }
 
@@ -222,6 +264,12 @@ pub struct Settings {
 
     pub edge_guard_chrome: bool,
 
+    /// One of `gradient`, `gradient-dark`, `gradient-light`, `dark`, `light`.
+    ///
+    /// Two things in one string: whether there is a gradient, and whether it
+    /// is light or dark. Plain `gradient` leaves the second to Windows; the
+    /// other two say it outright, for anyone who does not want to change a
+    /// system setting to change an app.
     pub theme: String,
 
     pub accent_hue: f64,
@@ -256,6 +304,9 @@ pub struct Settings {
     pub crossbow: CrossbowSettings,
 
     pub overlay: OverlaySettings,
+
+    /// Saved configurations you can switch between.
+    pub presets: Vec<Preset>,
 }
 
 impl Default for Settings {
@@ -268,7 +319,7 @@ impl Default for Settings {
             edge_guard_px: 12.0,
             edge_guard_mode: "window".into(),
             edge_guard_chrome: true,
-            theme: "gradient".into(),
+            theme: "gradient-dark".into(),
             accent_hue: 222.0,
             accent_sat: 100.0,
             cursor_style: "image".into(),
@@ -287,6 +338,7 @@ impl Default for Settings {
             davey: DaveySettings::default(),
             crossbow: CrossbowSettings::default(),
             overlay: OverlaySettings::default(),
+            presets: Vec::new(),
         }
     }
 }
@@ -319,8 +371,11 @@ impl Settings {
             self.window_height = self.window_height.clamp(460.0, 4000.0);
         }
 
-        if !matches!(self.theme.as_str(), "gradient" | "dark" | "light") {
-            self.theme = "gradient".into();
+        if !matches!(
+            self.theme.as_str(),
+            "gradient" | "gradient-dark" | "gradient-light" | "dark" | "light"
+        ) {
+            self.theme = "gradient-dark".into();
         }
         if !self.accent_hue.is_finite() {
             self.accent_hue = 222.0;
@@ -353,6 +408,20 @@ impl Settings {
         self.davey = self.davey.sanitised();
         self.crossbow = self.crossbow.sanitised();
         self.overlay = self.overlay.sanitised();
+
+        self.presets = self
+            .presets
+            .into_iter()
+            .map(|mut preset| {
+                preset.name = preset.name.trim().chars().take(40).collect();
+                if preset.name.is_empty() {
+                    preset.name = "Preset".into();
+                }
+                preset
+            })
+            .filter(|preset| !preset.code.is_empty())
+            .take(20)
+            .collect();
         self
     }
 }

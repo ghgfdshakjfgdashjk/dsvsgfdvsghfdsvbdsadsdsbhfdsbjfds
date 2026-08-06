@@ -14,6 +14,14 @@ pub struct CrossbowSettings {
     pub bind_vk: u32,
     pub crossbow_slot: u32,
     pub sword_slot: u32,
+    /// Fire the tactical crossbow first, then the ordinary one, before going
+    /// back to the sword. Off, only the ordinary one is used.
+    pub tactical_enabled: bool,
+    pub tactical_slot: u32,
+    /// Used in place of `after_switch_ms` for the second shot only, so the
+    /// crossbow can be given longer to come out after the tactical bow has
+    /// fired without slowing down the first swap.
+    pub second_switch_ms: u64,
     /// How long each slot number is held.
     pub key_hold_ms: u64,
     /// Time to let the crossbow actually come out before firing.
@@ -32,6 +40,9 @@ impl Default for CrossbowSettings {
             bind_vk: 0,
             crossbow_slot: 4,
             sword_slot: 1,
+            tactical_enabled: false,
+            tactical_slot: 3,
+            second_switch_ms: 120,
             key_hold_ms: 12,
             after_switch_ms: 40,
             click_hold_ms: 40,
@@ -44,6 +55,8 @@ impl CrossbowSettings {
     pub fn sanitised(mut self) -> Self {
         self.crossbow_slot = self.crossbow_slot.clamp(1, 9);
         self.sword_slot = self.sword_slot.clamp(1, 9);
+        self.tactical_slot = self.tactical_slot.clamp(1, 9);
+        self.second_switch_ms = self.second_switch_ms.min(5_000);
         self.key_hold_ms = self.key_hold_ms.min(2_000);
         self.after_switch_ms = self.after_switch_ms.min(5_000);
         self.click_hold_ms = self.click_hold_ms.min(2_000);
@@ -172,12 +185,31 @@ fn slot_key(slot: u32) -> u16 {
     (0x30 + slot.clamp(1, 9)) as u16
 }
 
-fn run_once(settings: &CrossbowSettings) {
-    tap(slot_key(settings.crossbow_slot), settings.key_hold_ms);
-    wait(settings.after_switch_ms);
+/// Swap to a slot, wait `settle` for the weapon to come out, shoot, and pause.
+fn shoot_from(slot: u32, settle: u64, settings: &CrossbowSettings) {
+    tap(slot_key(slot), settings.key_hold_ms);
+    wait(settle);
 
     click(settings.click_hold_ms);
     wait(settings.after_click_ms);
+}
+
+fn run_once(settings: &CrossbowSettings) {
+    // The tactical one goes first, so the slower bolt is already in the air
+    // when the second shot follows it.
+    //
+    // That second swap gets its own delay. Coming off a shot is not the same
+    // as coming off a sword: the game is still finishing the first weapon's
+    // animation, so the crossbow can take noticeably longer to be ready to
+    // fire than it does from a standing start.
+    let settle = if settings.tactical_enabled {
+        shoot_from(settings.tactical_slot, settings.after_switch_ms, settings);
+        settings.second_switch_ms
+    } else {
+        settings.after_switch_ms
+    };
+
+    shoot_from(settings.crossbow_slot, settle, settings);
 
     tap(slot_key(settings.sword_slot), settings.key_hold_ms);
 }

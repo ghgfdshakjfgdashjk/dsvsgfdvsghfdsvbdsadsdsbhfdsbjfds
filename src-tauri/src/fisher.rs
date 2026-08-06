@@ -248,40 +248,9 @@ impl Fisher {
         tally.log.clear();
     }
 
-    pub fn snapshot(&self) -> String {
-        let settings = self.inner.settings.lock().unwrap().clone();
-        let (screen_w, screen_h) = win32::screen_size();
-
-        if screen_w <= 0 || screen_h <= 0 {
-            return "snapshot failed: no screen".into();
-        }
-
-        let x = ((screen_w as f64) * settings.search_left) as i32;
-        let y = ((screen_h as f64) * settings.search_top) as i32;
-        let width = (((screen_w as f64) * settings.search_right) as i32 - x)
-            .max(8)
-            .min(screen_w - x);
-        let height = (((screen_h as f64) * settings.search_bottom) as i32 - y)
-            .max(8)
-            .min(screen_h - y);
-
-        let taken = win32::Grabber::new(width, height)
-            .and_then(|mut grab| grab.grab(x, y).map(|pixels| pixels.to_vec()));
-
-        let outcome = match taken {
-            Some(pixels) => match write_bitmap(&pixels, width, height) {
-                Ok(path) => format!("snapshot saved: {path}"),
-                Err(why) => format!("snapshot failed: {why}"),
-            },
-            None => "snapshot failed: could not read the screen".into(),
-        };
-
-        record(&self.inner, outcome.clone());
-        outcome
-    }
-
     pub fn status(&self) -> FisherStatus {
         let tally = self.inner.tally.lock().unwrap();
+
         FisherStatus {
             running: self.inner.running.load(Ordering::Acquire),
             phase: tally.phase.clone(),
@@ -293,56 +262,6 @@ impl Fisher {
             log: tally.log.clone(),
         }
     }
-}
-
-fn write_bitmap(pixels: &[u32], width: i32, height: i32) -> Result<String, String> {
-    let home = std::env::var("USERPROFILE").map_err(|_| "no home folder".to_string())?;
-    let stamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-
-    let mut folder = std::path::PathBuf::from(home);
-    folder.push("Desktop");
-    if !folder.exists() {
-        folder.pop();
-    }
-    folder.push(format!("fisher-{stamp}.bmp"));
-
-    let stride = ((width * 3 + 3) / 4) * 4;
-    let body = (stride * height) as usize;
-    let mut out = Vec::with_capacity(54 + body);
-
-    out.extend_from_slice(b"BM");
-    out.extend_from_slice(&((54 + body) as u32).to_le_bytes());
-    out.extend_from_slice(&0u32.to_le_bytes());
-    out.extend_from_slice(&54u32.to_le_bytes());
-    out.extend_from_slice(&40u32.to_le_bytes());
-    out.extend_from_slice(&width.to_le_bytes());
-    out.extend_from_slice(&height.to_le_bytes());
-    out.extend_from_slice(&1u16.to_le_bytes());
-    out.extend_from_slice(&24u16.to_le_bytes());
-    for _ in 0..6 {
-        out.extend_from_slice(&0u32.to_le_bytes());
-    }
-
-    for row in (0..height).rev() {
-        let mut written = 0;
-        for column in 0..width {
-            let pixel = pixels[(row * width + column) as usize];
-            out.push((pixel & 0xFF) as u8);
-            out.push(((pixel >> 8) & 0xFF) as u8);
-            out.push(((pixel >> 16) & 0xFF) as u8);
-            written += 3;
-        }
-        while written < stride {
-            out.push(0);
-            written += 1;
-        }
-    }
-
-    std::fs::write(&folder, out).map_err(|e| e.to_string())?;
-    Ok(folder.to_string_lossy().to_string())
 }
 
 fn channels(color: u32) -> (i32, i32, i32) {

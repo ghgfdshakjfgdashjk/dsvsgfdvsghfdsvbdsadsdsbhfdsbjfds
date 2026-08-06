@@ -35,7 +35,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/Boots3453/BootsAutoClicker/releases/latest/download/latest.json"
+        "https://github.com/Boots3453/Syntax/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ0ODNFQzk1NDg4QTdFODkKUldTSmZvcElsZXlEMUhWQ0MvOVpDUHhFc1lPNzd2T0tFQmJ5OG56cGkvMlFjK2dqZlhrNUtENkgK"
     }
