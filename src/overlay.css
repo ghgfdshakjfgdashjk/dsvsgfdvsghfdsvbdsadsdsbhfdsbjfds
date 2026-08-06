@@ -1,0 +1,77 @@
+*,
+*::before,
+*::after {
+  /* Without this a border adds to the size, pushes past the window, and gets
+     clipped -- which shows up as a hairline along the edge. */
+  box-sizing: border-box;
+}
+
+:root {
+  /* straight off the app mark: deep navy through to cyan */
+  --deep: #001657;
+  --mid: #1b7fd9;
+  --bright: #4de8f8;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+body {
+  display: flex;
+  font-family: "Inter", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+}
+
+/* The pill fills the whole window, so the window's edge is the pill's edge.
+   Anything less and the pill floats somewhere inside an invisible box, which
+   is what kept it off the screen edge. */
+.pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--deep) 0%, var(--mid) 62%, var(--bright) 130%);
+  color: #ffffff;
+  transition: opacity 160ms ease;
+}
+
+/* Still readable when nothing is running -- it is a readout, not a
+   notification, so it should not vanish into the background. */
+.pill.idle {
+  opacity: 0.88;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--bright);
+}
+
+.pill.idle .dot {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.value {
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.unit {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.78);
+}

@@ -17,7 +17,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 # Names the executable itself. Without this the binary inherits the package
 # name and you'd get boots_autoclicker.exe regardless of the product name.
 [[bin]]
-name = "BootsAutoClicker"
+name = "Syntax"
 path = "src/main.rs"
 
 [build-dependencies]

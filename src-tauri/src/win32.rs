@@ -52,6 +52,8 @@ pub const MOUSEEVENTF_MIDDLEUP: u32 = 0x0040;
 pub const MOUSEEVENTF_XDOWN: u32 = 0x0080;
 pub const MOUSEEVENTF_XUP: u32 = 0x0100;
 pub const MOUSEEVENTF_WHEEL: u32 = 0x0800;
+pub const MOUSEEVENTF_ABSOLUTE: u32 = 0x8000;
+pub const MOUSEEVENTF_VIRTUALDESK: u32 = 0x4000;
 
 pub const WHEEL_DELTA: i32 = 120;
 
@@ -310,6 +312,20 @@ extern "system" {
         offset: u32,
     ) -> isize;
     fn DeleteObject(ho: isize) -> i32;
+    fn CreateCompatibleDC(hdc: isize) -> isize;
+    fn SelectObject(hdc: isize, obj: isize) -> isize;
+    fn BitBlt(
+        hdcDest: isize,
+        xDest: i32,
+        yDest: i32,
+        width: i32,
+        height: i32,
+        hdcSrc: isize,
+        xSrc: i32,
+        ySrc: i32,
+        rop: u32,
+    ) -> i32;
+    fn DeleteDC(hdc: isize) -> i32;
 }
 
 #[link(name = "dwmapi")]
@@ -1117,6 +1133,120 @@ pub fn screen_pixel(x: i32, y: i32) -> Option<(u8, u8, u8)> {
     }
 }
 
+const SRCCOPY: u32 = 0x00CC_0020;
+const SM_CXSCREEN: i32 = 0;
+const SM_CYSCREEN: i32 = 1;
+
+pub fn screen_size() -> (i32, i32) {
+    unsafe { (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)) }
+}
+
+pub struct Grabber {
+    screen: isize,
+    mem: isize,
+    bitmap: isize,
+    previous: isize,
+    bits: *mut c_void,
+    width: i32,
+    height: i32,
+}
+
+impl Grabber {
+    pub fn new(width: i32, height: i32) -> Option<Grabber> {
+        if width <= 0 || height <= 0 {
+            return None;
+        }
+
+        unsafe {
+            let screen = GetDC(0);
+            if screen == 0 {
+                return None;
+            }
+
+            let mem = CreateCompatibleDC(screen);
+            if mem == 0 {
+                ReleaseDC(0, screen);
+                return None;
+            }
+
+            let header = BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: width,
+                biHeight: -height,
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: 0,
+                biSizeImage: 0,
+                biXPelsPerMeter: 0,
+                biYPelsPerMeter: 0,
+                biClrUsed: 0,
+                biClrImportant: 0,
+            };
+
+            let mut bits: *mut c_void = std::ptr::null_mut();
+            let bitmap = CreateDIBSection(mem, &header, DIB_RGB_COLORS, &mut bits, 0, 0);
+            if bitmap == 0 || bits.is_null() {
+                DeleteDC(mem);
+                ReleaseDC(0, screen);
+                return None;
+            }
+
+            let previous = SelectObject(mem, bitmap);
+
+            Some(Grabber {
+                screen,
+                mem,
+                bitmap,
+                previous,
+                bits,
+                width,
+                height,
+            })
+        }
+    }
+
+    pub fn width(&self) -> i32 {
+        self.width
+    }
+
+    pub fn height(&self) -> i32 {
+        self.height
+    }
+
+    pub fn grab(&mut self, x: i32, y: i32) -> Option<&[u32]> {
+        unsafe {
+            let ok = BitBlt(
+                self.mem,
+                0,
+                0,
+                self.width,
+                self.height,
+                self.screen,
+                x,
+                y,
+                SRCCOPY,
+            );
+            if ok == 0 {
+                return None;
+            }
+
+            let count = (self.width * self.height) as usize;
+            Some(std::slice::from_raw_parts(self.bits as *const u32, count))
+        }
+    }
+}
+
+impl Drop for Grabber {
+    fn drop(&mut self) {
+        unsafe {
+            SelectObject(self.mem, self.previous);
+            DeleteObject(self.bitmap);
+            DeleteDC(self.mem);
+            ReleaseDC(0, self.screen);
+        }
+    }
+}
+
 pub fn cursor_over_own_app() -> bool {
     unsafe {
         let mut point = POINT::default();
@@ -1360,6 +1490,34 @@ pub fn cursor_position() -> (i32, i32) {
 pub fn move_cursor(x: i32, y: i32) {
     unsafe {
         SetCursorPos(x, y);
+    }
+}
+
+/// An absolute move carrying the destination, so a click sent alongside it
+/// lands where we mean rather than wherever the cursor happens to be.
+pub fn move_event(x: i32, y: i32) -> INPUT {
+    unsafe {
+        let left = GetSystemMetrics(SM_XVIRTUALSCREEN);
+        let top = GetSystemMetrics(SM_YVIRTUALSCREEN);
+        let width = GetSystemMetrics(SM_CXVIRTUALSCREEN).max(2);
+        let height = GetSystemMetrics(SM_CYVIRTUALSCREEN).max(2);
+
+        let nx = ((x - left) as i64 * 65535 / (width - 1) as i64) as i32;
+        let ny = ((y - top) as i64 * 65535 / (height - 1) as i64) as i32;
+
+        INPUT {
+            kind: INPUT_MOUSE,
+            payload: INPUT_PAYLOAD {
+                mi: MOUSEINPUT {
+                    dx: nx,
+                    dy: ny,
+                    mouseData: 0,
+                    dwFlags: MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK,
+                    time: 0,
+                    dwExtraInfo: SIGNATURE,
+                },
+            },
+        }
     }
 }
 

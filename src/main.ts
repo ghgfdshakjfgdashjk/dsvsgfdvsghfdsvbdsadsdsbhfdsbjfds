@@ -348,10 +348,134 @@ interface Optimizations {
   cleanups: CleanupState[];
 }
 
+interface Fisher {
+  bindEnabled: boolean;
+  bindVk: number;
+  types: boolean[];
+  colors: number[];
+  tolerance: number;
+  castButton: string;
+  castDelayMs: number;
+  recastDelayMs: number;
+  rejectVk: number;
+  rejectDelayMs: number;
+  biteTimeoutSecs: number;
+  fightTimeoutSecs: number;
+  deadzone: number;
+  searchTop: number;
+  searchBottom: number;
+  searchLeft: number;
+  searchRight: number;
+}
+
+interface FisherStatus {
+  running: boolean;
+  phase: string;
+  detail: string;
+  caught: number[];
+  rejected: number;
+  missed: number;
+  barFound: boolean;
+  log: string[];
+}
+
+const FISH_KINDS = [
+  { key: "iron", label: "Iron", note: "grey" },
+  { key: "special", label: "Special", note: "red" },
+  { key: "emerald", label: "Emerald", note: "green" },
+  { key: "diamond", label: "Diamond", note: "blue" },
+  { key: "gold", label: "Gold", note: "yellow" },
+];
+
+interface Gumdrop {
+  bindEnabled: boolean;
+  bindVk: number;
+  gumdropSlot: number;
+  pickaxeSlot: number;
+  swordSlot: number;
+  keyHoldMs: number;
+  clickHoldMs: number;
+  afterGumdropMs: number;
+  placeWaitMs: number;
+  afterPickaxeMs: number;
+  afterBreakMs: number;
+}
+
+interface GumdropStatus {
+  busy: boolean;
+  runs: number;
+}
+
+interface Skywars {
+  bindEnabled: boolean;
+  bindVk: number;
+  clickHoldMs: number;
+  settleMs: number;
+  betweenMs: number;
+  clicksPerItem: number;
+  retryGapMs: number;
+  restoreCursor: boolean;
+}
+
+interface Davey {
+  bindEnabled: boolean;
+  bindVk: number;
+  holdVk: number;
+  holdMs: number;
+  pickaxeSlot: number;
+  keyHoldMs: number;
+  burstCps: number;
+  burstMs: number;
+  burstDuty: number;
+}
+
+interface Overlay {
+  enabled: boolean;
+  position: string;
+  x: number;
+  y: number;
+  onlyInWindows: boolean;
+  windows: string[];
+}
+
+interface Crossbow {
+  bindEnabled: boolean;
+  bindVk: number;
+  crossbowSlot: number;
+  swordSlot: number;
+  keyHoldMs: number;
+  afterSwitchMs: number;
+  clickHoldMs: number;
+  afterClickMs: number;
+}
+
+interface CrossbowStatus {
+  busy: boolean;
+  runs: number;
+}
+
+interface DaveyStatus {
+  busy: boolean;
+  runs: number;
+}
+
+interface SkywarsStatus {
+  busy: boolean;
+  runs: number;
+  taken: number;
+  note: string;
+}
+
 type CaptureTarget =
   | { kind: "bind" }
   | { kind: "panic" }
   | { kind: "autoBind" }
+  | { kind: "fisherBind" }
+  | { kind: "dropBind" }
+  | { kind: "skyBind" }
+  | { kind: "dvyBind" }
+  | { kind: "dvyHoldKey" }
+  | { kind: "bowBind" }
   | { kind: "stepKey"; index: number }
   | { kind: "position"; index: number }
   | { kind: "clickPoint" }
@@ -362,6 +486,15 @@ let settings!: Settings;
 
 let profile!: Profile;
 let automation!: Automation;
+let fisher!: Fisher;
+let fisherPushTimer: number | undefined;
+let gumdrop!: Gumdrop;
+let dropPushTimer: number | undefined;
+let skywars!: Skywars;
+let davey!: Davey;
+let crossbow!: Crossbow;
+let overlay!: Overlay;
+let skyPushTimer: number | undefined;
 let capturing: CaptureTarget | null = null;
 let pushTimer: number | undefined;
 let autoPushTimer: number | undefined;
@@ -475,6 +608,7 @@ const edgeGuardChrome = el<HTMLInputElement>("edgeGuardChrome");
 const statTotalClicks = el<HTMLSpanElement>("statTotalClicks");
 const statActiveTime = el<HTMLSpanElement>("statActiveTime");
 const statCpu = el<HTMLSpanElement>("statCpu");
+const creditVersion = el<HTMLElement>("creditVersion");
 const resetStatsBtn = el<HTMLButtonElement>("btnResetStats");
 
 const navIndicator = el<HTMLSpanElement>("navIndicator");
@@ -492,6 +626,107 @@ const opacityValue = el<HTMLSpanElement>("opacityValue");
 const pinBtn = el<HTMLButtonElement>("btnPin");
 const windowSizeHint = el<HTMLParagraphElement>("windowSizeHint");
 const resetWindowBtn = el<HTMLButtonElement>("btnResetWindow");
+
+const fisherHero = el<HTMLDivElement>("fisherHero");
+const fisherStatusText = el<HTMLSpanElement>("fisherStatus");
+const fisherSub = el<HTMLSpanElement>("fisherSub");
+const fisherRunBtn = el<HTMLButtonElement>("btnFisherRun");
+const fisherRunLabel = el<HTMLSpanElement>("fisherRunLabel");
+const fishGrid = el<HTMLDivElement>("fishGrid");
+const fisherBindToggle = el<HTMLInputElement>("fisherBindEnabled");
+const fisherBindWrap = el<HTMLDivElement>("fisherBindWrap");
+const fisherBindBtn = el<HTMLButtonElement>("btnFisherBind");
+const fisherBindLabel = el<HTMLSpanElement>("fisherBindLabel");
+const fisherResetBtn = el<HTMLButtonElement>("btnFisherReset");
+const fisherTrace = el<HTMLPreElement>("fisherTrace");
+const fisherEntry = el<HTMLButtonElement>("fisherEntry");
+const fisherEntryNote = el<HTMLSpanElement>("fisherEntryNote");
+const fisherEntryDot = el<HTMLSpanElement>("fisherEntryDot");
+const fisherBody = el<HTMLDivElement>("fisherBody");
+const fisherCopyBtn = el<HTMLButtonElement>("btnFisherCopy");
+const dropEntry = el<HTMLButtonElement>("dropEntry");
+const dropEntryNote = el<HTMLSpanElement>("dropEntryNote");
+const dropEntryDot = el<HTMLSpanElement>("dropEntryDot");
+const dropBody = el<HTMLDivElement>("dropBody");
+const dropGumSlot = el<HTMLInputElement>("dropGumSlot");
+const dropPickSlot = el<HTMLInputElement>("dropPickSlot");
+const dropSwordSlot = el<HTMLInputElement>("dropSwordSlot");
+const dropBindToggle = el<HTMLInputElement>("dropBindEnabled");
+const dropBindWrap = el<HTMLDivElement>("dropBindWrap");
+const dropBindBtn = el<HTMLButtonElement>("btnDropBind");
+const dropBindLabel = el<HTMLSpanElement>("dropBindLabel");
+const dropKeyHold = el<HTMLInputElement>("dropKeyHold");
+const dropAfterGum = el<HTMLInputElement>("dropAfterGum");
+const dropAfterPick = el<HTMLInputElement>("dropAfterPick");
+const dropAfterBreak = el<HTMLInputElement>("dropAfterBreak");
+const dropClickHold = el<HTMLInputElement>("dropClickHold");
+const dropWait = el<HTMLInputElement>("dropWait");
+const dropTotal = el<HTMLParagraphElement>("dropTotal");
+const dropRuns = el<HTMLParagraphElement>("dropRuns");
+const dropRunBtn = el<HTMLButtonElement>("btnDropRun");
+const skyEntry = el<HTMLButtonElement>("skyEntry");
+const skyEntryNote = el<HTMLSpanElement>("skyEntryNote");
+const skyEntryDot = el<HTMLSpanElement>("skyEntryDot");
+const skyBody = el<HTMLDivElement>("skyBody");
+
+const dvyEntry = el<HTMLButtonElement>("dvyEntry");
+const dvyEntryNote = el<HTMLSpanElement>("dvyEntryNote");
+const dvyEntryDot = el<HTMLSpanElement>("dvyEntryDot");
+const dvyBody = el<HTMLDivElement>("dvyBody");
+const dvyBindToggle = el<HTMLInputElement>("dvyBindEnabled");
+const dvyBindWrap = el<HTMLDivElement>("dvyBindWrap");
+const dvyBindBtn = el<HTMLButtonElement>("btnDvyBind");
+const dvyBindLabel = el<HTMLSpanElement>("dvyBindLabel");
+const dvyHoldKeyBtn = el<HTMLButtonElement>("btnDvyHoldKey");
+const dvyHoldLabel = el<HTMLSpanElement>("dvyHoldLabel");
+const dvyPickSlot = el<HTMLInputElement>("dvyPickSlot");
+const dvyHoldMs = el<HTMLInputElement>("dvyHoldMs");
+const dvyKeyHold = el<HTMLInputElement>("dvyKeyHold");
+const dvyBurstMs = el<HTMLInputElement>("dvyBurstMs");
+const dvyBurstCps = el<HTMLInputElement>("dvyBurstCps");
+const dvyBurstDuty = el<HTMLInputElement>("dvyBurstDuty");
+const dvyRuns = el<HTMLElement>("dvyRuns");
+const dvyRunBtn = el<HTMLButtonElement>("btnDvyRun");
+
+const bowEntry = el<HTMLButtonElement>("bowEntry");
+const bowEntryNote = el<HTMLSpanElement>("bowEntryNote");
+const bowEntryDot = el<HTMLSpanElement>("bowEntryDot");
+const bowBody = el<HTMLDivElement>("bowBody");
+const bowBindToggle = el<HTMLInputElement>("bowBindEnabled");
+const bowBindWrap = el<HTMLDivElement>("bowBindWrap");
+const bowBindBtn = el<HTMLButtonElement>("btnBowBind");
+const bowBindLabel = el<HTMLSpanElement>("bowBindLabel");
+const bowSlot = el<HTMLInputElement>("bowSlot");
+const bowSwordSlot = el<HTMLInputElement>("bowSwordSlot");
+const bowKeyHold = el<HTMLInputElement>("bowKeyHold");
+const bowAfterSwitch = el<HTMLInputElement>("bowAfterSwitch");
+const bowClickHold = el<HTMLInputElement>("bowClickHold");
+const bowAfterClick = el<HTMLInputElement>("bowAfterClick");
+const bowRuns = el<HTMLElement>("bowRuns");
+const bowRunBtn = el<HTMLButtonElement>("btnBowRun");
+
+const overlayToggle = el<HTMLInputElement>("overlayEnabled");
+const overlayWrap = el<HTMLDivElement>("overlayWrap");
+const overlaySpots = el<HTMLDivElement>("overlaySpots");
+const overlayXY = el<HTMLDivElement>("overlayXY");
+const overlayX = el<HTMLInputElement>("overlayX");
+const overlayY = el<HTMLInputElement>("overlayY");
+const overlayOnlyIn = el<HTMLInputElement>("overlayOnlyIn");
+const overlayNamesWrap = el<HTMLDivElement>("overlayNamesWrap");
+const overlayNames = el<HTMLInputElement>("overlayNames");
+
+const skyBindToggle = el<HTMLInputElement>("skyBindEnabled");
+const skyBindWrap = el<HTMLDivElement>("skyBindWrap");
+const skyBindBtn = el<HTMLButtonElement>("btnSkyBind");
+const skyBindLabel = el<HTMLSpanElement>("skyBindLabel");
+const skyRestore = el<HTMLInputElement>("skyRestore");
+const skySettle = el<HTMLInputElement>("skySettle");
+const skyClickHold = el<HTMLInputElement>("skyClickHold");
+const skyBetween = el<HTMLInputElement>("skyBetween");
+const skyClicks = el<HTMLInputElement>("skyClicks");
+const skyRetryGap = el<HTMLInputElement>("skyRetryGap");
+const skyNote = el<HTMLParagraphElement>("skyNote");
+const skyRunBtn = el<HTMLButtonElement>("btnSkyRun");
 
 const autoHero = el<HTMLDivElement>("autoHero");
 const autoStatus = el<HTMLSpanElement>("autoStatus");
@@ -1580,6 +1815,11 @@ function text(node: HTMLElement, value: string): void {
 
 let graphWasActive = false;
 
+/// The clicker that ran most recently. The readout keeps showing its
+/// numbers after it stops, instead of dropping back to a profile that
+/// never ran and reading zero.
+let lastRun: number | null = null;
+
 let windowFocused = true;
 
 function drawingWorthwhile(): boolean {
@@ -1610,10 +1850,24 @@ function renderStatus(status: Status): void {
   const mine = status.clickers[settings.selected];
   if (!mine) return;
 
-  const other = mine.active
+  const live = mine.active
     ? undefined
     : status.clickers.find((c) => c.active && c.guarded === false) ??
       status.clickers.find((c) => c.active);
+
+  if (mine.active) {
+    lastRun = settings.selected;
+  } else if (live) {
+    lastRun = status.clickers.indexOf(live);
+  }
+
+  // nothing is running: fall back to whichever clicker went last
+  const stale =
+    !mine.active && !live && lastRun !== null && lastRun !== settings.selected
+      ? status.clickers[lastRun]
+      : undefined;
+
+  const other = live ?? stale;
   const shown = other ?? mine;
 
   const cps = shown.cps >= 100 ? formatCount(shown.cps) : shown.cps.toFixed(1);
@@ -2260,6 +2514,634 @@ function renderAutomation(): void {
   renderSteps();
 }
 
+function pushFisher(): void {
+  window.clearTimeout(fisherPushTimer);
+  fisherPushTimer = window.setTimeout(() => {
+    void invoke<Fisher>("apply_fisher", { config: fisher }).catch(() => {});
+  }, 140);
+}
+
+function hex(color: number): string {
+  return `#${(color & 0xffffff).toString(16).padStart(6, "0")}`;
+}
+
+let fishGridBuilt = false;
+
+function buildFishGrid(): void {
+  fishGrid.textContent = "";
+
+  FISH_KINDS.forEach((kind, index) => {
+    const row = document.createElement("div");
+    row.className = "fish-row";
+
+    const swatch = document.createElement("span");
+    swatch.className = "fish-swatch";
+    swatch.id = `fishColor${index}`;
+
+    const name = document.createElement("span");
+    name.className = "fish-name";
+    name.textContent = kind.label;
+
+    const note = document.createElement("span");
+    note.className = "fish-note";
+    note.textContent = kind.note;
+
+    const count = document.createElement("span");
+    count.className = "fish-count";
+    count.id = `fishCount${index}`;
+    count.textContent = "0";
+
+    const toggle = document.createElement("label");
+    toggle.className = "switch";
+    const box = noAutofill(document.createElement("input"));
+    box.type = "checkbox";
+    box.id = `fishOn${index}`;
+    box.addEventListener("change", () => {
+      fisher.types[index] = box.checked;
+      pushFisher();
+    });
+    const track = document.createElement("span");
+    track.className = "track";
+    toggle.append(box, track);
+
+    row.append(swatch, name, note, count, toggle);
+    fishGrid.append(row);
+  });
+
+  fishGridBuilt = true;
+}
+
+function renderFisher(): void {
+  if (!fishGridBuilt) buildFishGrid();
+
+  FISH_KINDS.forEach((_, index) => {
+    const swatch = document.getElementById(`fishColor${index}`);
+    const box = document.getElementById(`fishOn${index}`) as HTMLInputElement | null;
+    if (swatch) swatch.style.background = hex(fisher.colors[index] ?? 0);
+    if (box) box.checked = fisher.types[index] !== false;
+  });
+
+  fisherBindToggle.checked = fisher.bindEnabled;
+  fisherBindWrap.classList.toggle("open", fisher.bindEnabled);
+  text(fisherBindLabel, vkLabel(fisher.bindVk));
+
+  text(
+    fisherSub,
+    fisher.bindEnabled ? `Press ${vkLabel(fisher.bindVk)} to run` : "Press Run to start",
+  );
+}
+
+function renderFisherStatus(status: FisherStatus): void {
+  fisherHero.classList.toggle("live", status.running);
+  fisherRunBtn.classList.toggle("live", status.running);
+  fisherEntryDot.classList.toggle("live", status.running);
+
+  const caught = status.caught.reduce((sum, n) => sum + n, 0);
+  text(
+    fisherEntryNote,
+    status.running
+      ? `${status.phase} — ${caught} caught`
+      : caught > 0
+        ? `Stopped — ${caught} caught`
+        : "Stopped",
+  );
+  text(fisherStatusText, status.running ? status.phase : "Stopped");
+  text(fisherRunLabel, status.running ? "Stop" : "Run");
+
+  FISH_KINDS.forEach((_, index) => {
+    const count = document.getElementById(`fishCount${index}`);
+    if (count) text(count, String(status.caught[index] ?? 0));
+  });
+
+  const trace = (status.log ?? []).join("\n");
+  text(fisherTrace, trace || "Nothing recorded yet.");
+
+  if (status.running) {
+    const extra = status.rejected > 0 ? ` — ${status.rejected} cancelled` : "";
+    text(fisherSub, `${status.detail || "working"}${extra}`);
+  } else {
+    text(
+      fisherSub,
+      fisher.bindEnabled ? `Press ${vkLabel(fisher.bindVk)} to run` : "Press Run to start",
+    );
+  }
+}
+
+function wireFisher(): void {
+  fisherEntry.addEventListener("click", () => {
+    const open = !fisherBody.classList.contains("open");
+    fisherBody.classList.toggle("open", open);
+    fisherEntry.classList.toggle("open", open);
+    fisherEntry.setAttribute("aria-expanded", String(open));
+  });
+
+  fisherRunBtn.addEventListener("click", () => {
+    void invoke<boolean>("toggle_fisher");
+  });
+
+  fisherResetBtn.addEventListener("click", () => {
+    void invoke("reset_fisher_counts");
+  });
+
+  fisherCopyBtn.addEventListener("click", () => {
+    const text = fisherTrace.textContent ?? "";
+    void navigator.clipboard.writeText(text).then(
+      () => {
+        fisherCopyBtn.textContent = "Copied";
+        window.setTimeout(() => (fisherCopyBtn.textContent = "Copy"), 1400);
+      },
+      () => {
+        fisherCopyBtn.textContent = "Select it";
+      },
+    );
+  });
+
+  fisherBindToggle.addEventListener("change", () => {
+    fisher.bindEnabled = fisherBindToggle.checked;
+    renderFisher();
+  renderGumdrop();
+  renderSkywars();
+    pushFisher();
+  });
+
+  fisherBindBtn.addEventListener("click", () => {
+    if (capturing) {
+      void invoke("cancel_capture");
+      endCapture();
+      return;
+    }
+    beginCapture({ kind: "fisherBind" });
+  });
+
+}
+
+function pushGumdrop(): void {
+  window.clearTimeout(dropPushTimer);
+  dropPushTimer = window.setTimeout(() => {
+    void invoke<Gumdrop>("apply_gumdrop", { config: gumdrop }).catch(() => {});
+  }, 140);
+}
+
+function renderGumdrop(): void {
+  dropGumSlot.value = String(gumdrop.gumdropSlot);
+  dropPickSlot.value = String(gumdrop.pickaxeSlot);
+  dropSwordSlot.value = String(gumdrop.swordSlot);
+  dropKeyHold.value = String(gumdrop.keyHoldMs);
+  dropAfterGum.value = String(gumdrop.afterGumdropMs);
+  dropAfterPick.value = String(gumdrop.afterPickaxeMs);
+  dropAfterBreak.value = String(gumdrop.afterBreakMs);
+  dropClickHold.value = String(gumdrop.clickHoldMs);
+  dropWait.value = String(gumdrop.placeWaitMs);
+
+  const total =
+    gumdrop.keyHoldMs * 3 +
+    gumdrop.clickHoldMs * 2 +
+    gumdrop.afterGumdropMs +
+    gumdrop.placeWaitMs +
+    gumdrop.afterPickaxeMs +
+    gumdrop.afterBreakMs;
+  text(dropTotal, `One run takes about ${total} ms.`);
+
+  dropBindToggle.checked = gumdrop.bindEnabled;
+  dropBindWrap.classList.toggle("open", gumdrop.bindEnabled);
+  text(dropBindLabel, vkLabel(gumdrop.bindVk));
+
+  text(
+    dropEntryNote,
+    gumdrop.bindEnabled ? `Press ${vkLabel(gumdrop.bindVk)} to run once` : "Ready",
+  );
+}
+
+function renderGumdropStatus(status: GumdropStatus): void {
+  dropEntryDot.classList.toggle("live", status.busy);
+  text(dropRuns, status.runs === 0 ? "Not run yet" : `Run ${status.runs} times`);
+}
+
+function wireGumdrop(): void {
+  dropEntry.addEventListener("click", () => {
+    const open = !dropBody.classList.contains("open");
+    dropBody.classList.toggle("open", open);
+    dropEntry.classList.toggle("open", open);
+    dropEntry.setAttribute("aria-expanded", String(open));
+  });
+
+  dropRunBtn.addEventListener("click", () => {
+    void invoke("fire_gumdrop");
+  });
+
+  dropBindToggle.addEventListener("change", () => {
+    gumdrop.bindEnabled = dropBindToggle.checked;
+    renderGumdrop();
+  renderSkywars();
+    pushGumdrop();
+  });
+
+  dropBindBtn.addEventListener("click", () => {
+    if (capturing) {
+      void invoke("cancel_capture");
+      endCapture();
+      return;
+    }
+    beginCapture({ kind: "dropBind" });
+  });
+
+  const slot = (input: HTMLInputElement, apply: (value: number) => void) => {
+    input.addEventListener("change", () => {
+      apply(Math.min(9, Math.max(1, Math.round(Number(input.value) || 1))));
+      renderGumdrop();
+  renderSkywars();
+      pushGumdrop();
+    });
+  };
+
+  slot(dropGumSlot, (v) => (gumdrop.gumdropSlot = v));
+  slot(dropPickSlot, (v) => (gumdrop.pickaxeSlot = v));
+  slot(dropSwordSlot, (v) => (gumdrop.swordSlot = v));
+
+  const timing = (input: HTMLInputElement, cap: number, apply: (value: number) => void) => {
+    input.addEventListener("change", () => {
+      apply(Math.min(cap, Math.max(0, Math.round(Number(input.value) || 0))));
+      renderGumdrop();
+  renderSkywars();
+      pushGumdrop();
+    });
+  };
+
+  timing(dropKeyHold, 2000, (v) => (gumdrop.keyHoldMs = v));
+  timing(dropAfterGum, 5000, (v) => (gumdrop.afterGumdropMs = v));
+  timing(dropAfterPick, 5000, (v) => (gumdrop.afterPickaxeMs = v));
+  timing(dropAfterBreak, 5000, (v) => (gumdrop.afterBreakMs = v));
+  timing(dropClickHold, 2000, (v) => (gumdrop.clickHoldMs = v));
+  timing(dropWait, 5000, (v) => (gumdrop.placeWaitMs = v));
+}
+
+function pushSkywars(): void {
+  window.clearTimeout(skyPushTimer);
+  skyPushTimer = window.setTimeout(() => {
+    void invoke<Skywars>("apply_skywars", { config: skywars }).catch(() => {});
+  }, 140);
+}
+
+function renderSkywars(): void {
+  skySettle.value = String(skywars.settleMs);
+  skyClickHold.value = String(skywars.clickHoldMs);
+  skyBetween.value = String(skywars.betweenMs);
+  skyClicks.value = String(skywars.clicksPerItem);
+  skyRetryGap.value = String(skywars.retryGapMs);
+  skyRestore.checked = skywars.restoreCursor;
+
+  skyBindToggle.checked = skywars.bindEnabled;
+  skyBindWrap.classList.toggle("open", skywars.bindEnabled);
+  text(skyBindLabel, vkLabel(skywars.bindVk));
+
+  text(
+    skyEntryNote,
+    skywars.bindEnabled ? `Press ${vkLabel(skywars.bindVk)} to loot a chest` : "Ready",
+  );
+}
+
+function renderSkywarsStatus(status: SkywarsStatus): void {
+  skyEntryDot.classList.toggle("live", status.busy);
+  text(skyNote, status.note);
+}
+
+function pushDavey(): void {
+  void invoke<Davey>("apply_davey", { config: davey }).catch(() => {});
+}
+
+function renderDavey(): void {
+  dvyPickSlot.value = String(davey.pickaxeSlot);
+  dvyHoldMs.value = String(davey.holdMs);
+  dvyKeyHold.value = String(davey.keyHoldMs);
+  dvyBurstMs.value = String(davey.burstMs);
+  dvyBurstCps.value = String(davey.burstCps);
+  dvyBurstDuty.value = String(davey.burstDuty);
+
+  text(dvyHoldLabel, vkLabel(davey.holdVk));
+
+  dvyBindToggle.checked = davey.bindEnabled;
+  dvyBindWrap.classList.toggle("open", davey.bindEnabled);
+  text(dvyBindLabel, vkLabel(davey.bindVk));
+
+  text(
+    dvyEntryNote,
+    davey.bindEnabled ? `Press ${vkLabel(davey.bindVk)} to run` : "Ready",
+  );
+}
+
+function renderDaveyStatus(status: DaveyStatus): void {
+  dvyEntryDot.classList.toggle("live", status.busy);
+  text(dvyRuns, status.runs === 0 ? "Not run yet" : `Run ${status.runs} times`);
+}
+
+function wireDavey(): void {
+  dvyEntry.addEventListener("click", () => {
+    const open = !dvyBody.classList.contains("open");
+    dvyBody.classList.toggle("open", open);
+    dvyEntry.classList.toggle("open", open);
+    dvyEntry.setAttribute("aria-expanded", String(open));
+  });
+
+  dvyRunBtn.addEventListener("click", () => {
+    void invoke("fire_davey");
+  });
+
+  dvyBindToggle.addEventListener("change", () => {
+    davey.bindEnabled = dvyBindToggle.checked;
+    renderDavey();
+    pushDavey();
+  });
+
+  const rebind = (button: HTMLButtonElement, target: CaptureTarget) => {
+    button.addEventListener("click", () => {
+      if (capturing) {
+        void invoke("cancel_capture");
+        endCapture();
+        return;
+      }
+      beginCapture(target);
+    });
+  };
+
+  rebind(dvyBindBtn, { kind: "dvyBind" });
+  rebind(dvyHoldKeyBtn, { kind: "dvyHoldKey" });
+
+  const number = (
+    input: HTMLInputElement,
+    low: number,
+    high: number,
+    apply: (value: number) => void,
+  ) => {
+    input.addEventListener("change", () => {
+      apply(Math.min(high, Math.max(low, Math.round(Number(input.value) || 0))));
+      renderDavey();
+      pushDavey();
+    });
+  };
+
+  number(dvyPickSlot, 1, 9, (v) => (davey.pickaxeSlot = v));
+  number(dvyHoldMs, 0, 10000, (v) => (davey.holdMs = v));
+  number(dvyKeyHold, 0, 2000, (v) => (davey.keyHoldMs = v));
+  number(dvyBurstMs, 0, 10000, (v) => (davey.burstMs = v));
+  number(dvyBurstCps, 1, 50000, (v) => (davey.burstCps = v));
+  number(dvyBurstDuty, 5, 95, (v) => (davey.burstDuty = v));
+}
+
+function pushOverlay(): void {
+  void invoke<Overlay>("apply_overlay", { config: overlay }).catch(() => {});
+}
+
+function renderOverlay(): void {
+  overlayToggle.checked = overlay.enabled;
+  overlayWrap.classList.toggle("open", overlay.enabled);
+  overlayXY.classList.toggle("open", overlay.position === "custom");
+
+  overlayX.value = String(overlay.x);
+  overlayY.value = String(overlay.y);
+
+  overlayOnlyIn.checked = overlay.onlyInWindows;
+  overlayNamesWrap.classList.toggle("open", overlay.onlyInWindows);
+  if (document.activeElement !== overlayNames) {
+    overlayNames.value = overlay.windows.join(", ");
+  }
+
+  overlaySpots.querySelectorAll<HTMLButtonElement>("[data-spot]").forEach((chip) => {
+    chip.classList.toggle("on", chip.dataset.spot === overlay.position);
+  });
+}
+
+function wireOverlay(): void {
+  overlayToggle.addEventListener("change", () => {
+    overlay.enabled = overlayToggle.checked;
+    renderOverlay();
+    pushOverlay();
+  });
+
+  overlaySpots.querySelectorAll<HTMLButtonElement>("[data-spot]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      overlay.position = chip.dataset.spot ?? "top-right";
+      renderOverlay();
+      pushOverlay();
+    });
+  });
+
+  const spot = (input: HTMLInputElement, apply: (value: number) => void) => {
+    input.addEventListener("change", () => {
+      apply(Math.min(32000, Math.max(-32000, Math.round(Number(input.value) || 0))));
+      renderOverlay();
+      pushOverlay();
+    });
+  };
+
+  spot(overlayX, (v) => (overlay.x = v));
+  spot(overlayY, (v) => (overlay.y = v));
+
+  overlayOnlyIn.addEventListener("change", () => {
+    overlay.onlyInWindows = overlayOnlyIn.checked;
+    renderOverlay();
+    pushOverlay();
+  });
+
+  overlayNames.addEventListener("change", () => {
+    overlay.windows = overlayNames.value
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0);
+    renderOverlay();
+    pushOverlay();
+  });
+}
+
+function pushCrossbow(): void {
+  void invoke<Crossbow>("apply_crossbow", { config: crossbow }).catch(() => {});
+}
+
+function renderCrossbow(): void {
+  bowSlot.value = String(crossbow.crossbowSlot);
+  bowSwordSlot.value = String(crossbow.swordSlot);
+  bowKeyHold.value = String(crossbow.keyHoldMs);
+  bowAfterSwitch.value = String(crossbow.afterSwitchMs);
+  bowClickHold.value = String(crossbow.clickHoldMs);
+  bowAfterClick.value = String(crossbow.afterClickMs);
+
+  bowBindToggle.checked = crossbow.bindEnabled;
+  bowBindWrap.classList.toggle("open", crossbow.bindEnabled);
+  text(bowBindLabel, vkLabel(crossbow.bindVk));
+
+  text(
+    bowEntryNote,
+    crossbow.bindEnabled ? `Press ${vkLabel(crossbow.bindVk)} to shoot` : "Ready",
+  );
+}
+
+function renderCrossbowStatus(status: CrossbowStatus): void {
+  bowEntryDot.classList.toggle("live", status.busy);
+  text(bowRuns, status.runs === 0 ? "Not run yet" : `Run ${status.runs} times`);
+}
+
+function wireCrossbow(): void {
+  bowEntry.addEventListener("click", () => {
+    const open = !bowBody.classList.contains("open");
+    bowBody.classList.toggle("open", open);
+    bowEntry.classList.toggle("open", open);
+    bowEntry.setAttribute("aria-expanded", String(open));
+  });
+
+  bowRunBtn.addEventListener("click", () => {
+    void invoke("fire_crossbow");
+  });
+
+  bowBindToggle.addEventListener("change", () => {
+    crossbow.bindEnabled = bowBindToggle.checked;
+    renderCrossbow();
+    pushCrossbow();
+  });
+
+  bowBindBtn.addEventListener("click", () => {
+    if (capturing) {
+      void invoke("cancel_capture");
+      endCapture();
+      return;
+    }
+    beginCapture({ kind: "bowBind" });
+  });
+
+  const number = (
+    input: HTMLInputElement,
+    low: number,
+    high: number,
+    apply: (value: number) => void,
+  ) => {
+    input.addEventListener("change", () => {
+      apply(Math.min(high, Math.max(low, Math.round(Number(input.value) || 0))));
+      renderCrossbow();
+      pushCrossbow();
+    });
+  };
+
+  number(bowSlot, 1, 9, (v) => (crossbow.crossbowSlot = v));
+  number(bowSwordSlot, 1, 9, (v) => (crossbow.swordSlot = v));
+  number(bowKeyHold, 0, 2000, (v) => (crossbow.keyHoldMs = v));
+  number(bowAfterSwitch, 0, 5000, (v) => (crossbow.afterSwitchMs = v));
+  number(bowClickHold, 0, 2000, (v) => (crossbow.clickHoldMs = v));
+  number(bowAfterClick, 0, 5000, (v) => (crossbow.afterClickMs = v));
+}
+
+/** Themed steppers, scroll-to-change, and no reaction to the arrow keys. */
+function wireNumberInputs(): void {
+  const nudge = (input: HTMLInputElement, by: number) => {
+    const now = Number(input.value) || 0;
+    const min = input.min === "" ? -Infinity : Number(input.min);
+    const max = input.max === "" ? Infinity : Number(input.max);
+
+    const next = Math.min(max, Math.max(min, now + by));
+    if (next === now) return;
+
+    input.value = String(next);
+    input.dispatchEvent(new Event("change"));
+  };
+
+  const arrow = (up: boolean) =>
+    `<svg viewBox="0 0 8 5" xmlns="http://www.w3.org/2000/svg"><path d="${
+      up ? "M4 0 8 5H0z" : "M4 5 0 0h8z"
+    }"/></svg>`;
+
+  document
+    .querySelectorAll<HTMLInputElement>('.macro-body input[type="number"]')
+    .forEach((input) => {
+      const step = () => Number(input.step) || 1;
+
+      // the arrow keys leave the value alone
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+          event.preventDefault();
+        }
+      });
+
+      input.addEventListener(
+        "wheel",
+        (event) => {
+          event.preventDefault();
+          const jump = event.shiftKey ? step() * 10 : step();
+          nudge(input, event.deltaY < 0 ? jump : -jump);
+        },
+        { passive: false },
+      );
+
+      const box = document.createElement("span");
+      box.className = "stepper";
+
+      for (const up of [true, false]) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.tabIndex = -1;
+        button.innerHTML = arrow(up);
+        button.addEventListener("mousedown", (event) => {
+          // keep the press off the button itself, then park focus on the
+          // field so nothing else is left holding a focus ring
+          event.preventDefault();
+          nudge(input, up ? step() : -step());
+          input.focus();
+        });
+        box.appendChild(button);
+      }
+
+      input.after(box);
+    });
+}
+
+function wireSkywars(): void {
+  skyEntry.addEventListener("click", () => {
+    const open = !skyBody.classList.contains("open");
+    skyBody.classList.toggle("open", open);
+    skyEntry.classList.toggle("open", open);
+    skyEntry.setAttribute("aria-expanded", String(open));
+  });
+
+  skyRunBtn.addEventListener("click", () => {
+    void invoke("fire_skywars");
+  });
+
+  skyBindToggle.addEventListener("change", () => {
+    skywars.bindEnabled = skyBindToggle.checked;
+    renderSkywars();
+    pushSkywars();
+  });
+
+  skyRestore.addEventListener("change", () => {
+    skywars.restoreCursor = skyRestore.checked;
+    pushSkywars();
+  });
+
+  skyBindBtn.addEventListener("click", () => {
+    if (capturing) {
+      void invoke("cancel_capture");
+      endCapture();
+      return;
+    }
+    beginCapture({ kind: "skyBind" });
+  });
+
+  const timing = (input: HTMLInputElement, cap: number, apply: (value: number) => void) => {
+    input.addEventListener("change", () => {
+      apply(Math.min(cap, Math.max(0, Math.round(Number(input.value) || 0))));
+      renderSkywars();
+      pushSkywars();
+    });
+  };
+
+  timing(skySettle, 2000, (v) => (skywars.settleMs = v));
+  timing(skyClickHold, 2000, (v) => (skywars.clickHoldMs = v));
+  timing(skyBetween, 5000, (v) => (skywars.betweenMs = v));
+  timing(skyRetryGap, 2000, (v) => (skywars.retryGapMs = v));
+
+  skyClicks.addEventListener("change", () => {
+    skywars.clicksPerItem = Math.min(5, Math.max(1, Math.round(Number(skyClicks.value) || 1)));
+    renderSkywars();
+    pushSkywars();
+  });
+}
+
 function renderAutomationStatus(status: AutomationStatus): void {
   macroRunning = status.running;
   syncTitleDot();
@@ -2594,6 +3476,18 @@ function captureButton(target: CaptureTarget): HTMLElement | null {
       return panicBtn;
     case "autoBind":
       return autoBindBtn;
+    case "fisherBind":
+      return fisherBindBtn;
+    case "dropBind":
+      return dropBindBtn;
+    case "skyBind":
+      return skyBindBtn;
+    case "dvyBind":
+      return dvyBindBtn;
+    case "dvyHoldKey":
+      return dvyHoldKeyBtn;
+    case "bowBind":
+      return bowBindBtn;
     default:
       return null;
   }
@@ -2969,6 +3863,7 @@ function wireActions(): void {
 
   resetBtn.addEventListener("click", () => {
     void invoke("reset_clicks", { index: settings.selected });
+    lastRun = null;
     statClicks.textContent = "0";
   });
 
@@ -2980,16 +3875,16 @@ function wireActions(): void {
 
   addProfileBtn.addEventListener("click", () => {
 
-    const copy: Profile = {
-      ...profile,
-      name: `Clicker ${settings.profiles.length + 1}`,
-      enabled: true,
-      bindEnabled: false,
-      bindVk: 0,
-    };
-    settings.profiles.push(copy);
-    selectProfile(settings.profiles.length - 1);
-    push();
+    void invoke<Profile>("default_profile").then((fresh) => {
+      fresh.name = `Clicker ${settings.profiles.length + 1}`;
+      fresh.enabled = true;
+      fresh.bindEnabled = false;
+      fresh.bindVk = 0;
+
+      settings.profiles.push(fresh);
+      selectProfile(settings.profiles.length - 1);
+      push();
+    });
   });
 
   deleteProfileBtn.addEventListener("click", () => {
@@ -3092,6 +3987,39 @@ async function wireEvents(): Promise<void> {
       endCapture();
       renderAutomation();
       pushAutomation();
+    } else if (target.kind === "fisherBind") {
+      fisher.bindVk = vk;
+      endCapture();
+      renderFisher();
+  renderGumdrop();
+  renderSkywars();
+      pushFisher();
+    } else if (target.kind === "dropBind") {
+      gumdrop.bindVk = vk;
+      endCapture();
+      renderGumdrop();
+  renderSkywars();
+      pushGumdrop();
+    } else if (target.kind === "skyBind") {
+      skywars.bindVk = vk;
+      endCapture();
+      renderSkywars();
+      pushSkywars();
+    } else if (target.kind === "dvyBind") {
+      davey.bindVk = vk;
+      endCapture();
+      renderDavey();
+      pushDavey();
+    } else if (target.kind === "dvyHoldKey") {
+      davey.holdVk = vk;
+      endCapture();
+      renderDavey();
+      pushDavey();
+    } else if (target.kind === "bowBind") {
+      crossbow.bindVk = vk;
+      endCapture();
+      renderCrossbow();
+      pushCrossbow();
     } else if (target.kind === "stepKey") {
       const step = automation.steps[target.index];
       if (step && step.kind === "key") step.vk = vk;
@@ -3193,6 +4121,26 @@ async function wireEvents(): Promise<void> {
     renderAutomationStatus(event.payload);
   });
 
+  await listen<FisherStatus>("fisher-status", (event) => {
+    renderFisherStatus(event.payload);
+  });
+
+  await listen<GumdropStatus>("gumdrop-status", (event) => {
+    renderGumdropStatus(event.payload);
+  });
+
+  await listen<CrossbowStatus>("crossbow-status", (event) => {
+    renderCrossbowStatus(event.payload);
+  });
+
+  await listen<DaveyStatus>("davey-status", (event) => {
+    renderDaveyStatus(event.payload);
+  });
+
+  await listen<SkywarsStatus>("skywars-status", (event) => {
+    renderSkywarsStatus(event.payload);
+  });
+
   await listen<boolean>("guard-tripped", (event) => {
     heroSub.textContent = event.payload
       ? "Held — cursor is near a window edge or button"
@@ -3209,6 +4157,12 @@ async function boot(): Promise<void> {
   settings = await invoke<Settings>("get_settings");
   profile = settings.profiles[settings.selected] ?? settings.profiles[0]!;
   automation = await invoke<Automation>("get_automation");
+  fisher = await invoke<Fisher>("get_fisher");
+  gumdrop = await invoke<Gumdrop>("get_gumdrop");
+  skywars = await invoke<Skywars>("get_skywars");
+  davey = await invoke<Davey>("get_davey");
+  crossbow = await invoke<Crossbow>("get_crossbow");
+  overlay = await invoke<Overlay>("get_overlay");
 
   document.querySelectorAll<HTMLInputElement>("input").forEach(noAutofill);
 
@@ -3258,6 +4212,13 @@ async function boot(): Promise<void> {
   wireToggles();
   wireActions();
   wireAutomation();
+  wireFisher();
+  wireGumdrop();
+  wireSkywars();
+  wireDavey();
+  wireCrossbow();
+  wireOverlay();
+  wireNumberInputs();
   wireOptimize();
   wireSuggest();
 
@@ -3278,6 +4239,12 @@ async function boot(): Promise<void> {
 
   renderAll();
   renderAutomation();
+  renderFisher();
+  renderGumdrop();
+  renderSkywars();
+  renderDavey();
+  renderCrossbow();
+  renderOverlay();
   requestAnimationFrame(positionAllSegments);
 
   void refreshOptimizations();
@@ -3296,10 +4263,12 @@ async function boot(): Promise<void> {
   getVersion()
     .then((version) => {
       appVersion.textContent = version;
+      creditVersion.textContent = version;
       renderSuggest();
     })
     .catch(() => {
       appVersion.textContent = "unknown";
+      creditVersion.textContent = "unknown";
       renderSuggest();
     });
 

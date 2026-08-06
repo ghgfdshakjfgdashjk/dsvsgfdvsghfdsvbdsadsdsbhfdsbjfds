@@ -4,6 +4,12 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 
 use crate::automation::AutomationSettings;
+use crate::fisher::FisherSettings;
+use crate::gumdrop::GumdropSettings;
+use crate::crossbow::CrossbowSettings;
+use crate::overlay::OverlaySettings;
+use crate::davey::DaveySettings;
+use crate::skywars::SkywarsSettings;
 
 pub const CPS_CEILING: f64 = 50_000.0;
 
@@ -128,7 +134,7 @@ impl Default for Profile {
             pixel_stop_on: "change".into(),
             points: Vec::new(),
             sequence_enabled: false,
-            sequence: "{LMB}".into(),
+            sequence: String::new(),
         }
     }
 }
@@ -238,6 +244,18 @@ pub struct Settings {
     pub opacity: f64,
 
     pub automation: AutomationSettings,
+
+    pub fisher: FisherSettings,
+
+    pub gumdrop: GumdropSettings,
+
+    pub skywars: SkywarsSettings,
+
+    pub davey: DaveySettings,
+
+    pub crossbow: CrossbowSettings,
+
+    pub overlay: OverlaySettings,
 }
 
 impl Default for Settings {
@@ -263,6 +281,12 @@ impl Default for Settings {
             acrylic: false,
             opacity: 0.72,
             automation: AutomationSettings::default(),
+            fisher: FisherSettings::default(),
+            gumdrop: GumdropSettings::default(),
+            skywars: SkywarsSettings::default(),
+            davey: DaveySettings::default(),
+            crossbow: CrossbowSettings::default(),
+            overlay: OverlaySettings::default(),
         }
     }
 }
@@ -323,6 +347,12 @@ impl Settings {
         }
 
         self.opacity = self.opacity.clamp(0.25, 1.0);
+        self.fisher = self.fisher.sanitised();
+        self.gumdrop = self.gumdrop.sanitised();
+        self.skywars = self.skywars.sanitised();
+        self.davey = self.davey.sanitised();
+        self.crossbow = self.crossbow.sanitised();
+        self.overlay = self.overlay.sanitised();
         self
     }
 }
@@ -334,14 +364,45 @@ fn config_path(app: &AppHandle) -> Option<PathBuf> {
         .map(|dir| dir.join("settings.json"))
 }
 
+/// v0.3.0 and earlier installed under a different identifier, so their
+/// settings sit in a different folder. Read them once, then save into the
+/// current one.
+const LEGACY_DIRS: [&str; 1] = ["com.kylei.boots-autoclicker"];
+
+fn legacy_paths(app: &AppHandle) -> Vec<PathBuf> {
+    let Ok(dir) = app.path().app_config_dir() else {
+        return Vec::new();
+    };
+    let Some(parent) = dir.parent() else {
+        return Vec::new();
+    };
+    LEGACY_DIRS
+        .iter()
+        .map(|name| parent.join(name).join("settings.json"))
+        .collect()
+}
+
+fn read_at(path: &PathBuf) -> Option<Settings> {
+    let text = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str::<Settings>(&text)
+        .ok()
+        .map(|parsed| parsed.sanitised())
+}
+
 pub fn load(app: &AppHandle) -> Settings {
     if let Some(path) = config_path(app) {
-        if let Ok(text) = std::fs::read_to_string(&path) {
-            if let Ok(parsed) = serde_json::from_str::<Settings>(&text) {
-                return parsed.sanitised();
-            }
+        if let Some(settings) = read_at(&path) {
+            return settings;
         }
     }
+
+    for path in legacy_paths(app) {
+        if let Some(settings) = read_at(&path) {
+            let _ = save(app, &settings);
+            return settings;
+        }
+    }
+
     Settings::default()
 }
 

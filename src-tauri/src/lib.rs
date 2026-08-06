@@ -1,10 +1,16 @@
 mod automation;
 mod clickers;
 mod engine;
+mod fisher;
+mod gumdrop;
 mod hotkeys;
 mod optimize;
 mod recorder;
 mod sequence;
+mod crossbow;
+mod overlay;
+mod davey;
+mod skywars;
 mod settings;
 mod win32;
 
@@ -69,6 +75,11 @@ pub struct AppState {
     automator: Arc<Automator>,
     capture: Arc<Capture>,
     recorder: Arc<recorder::Recorder>,
+    fisher: Arc<fisher::Fisher>,
+    gumdrop: Arc<gumdrop::Gumdrop>,
+    skywars: Arc<skywars::Skywars>,
+    davey: Arc<davey::Davey>,
+    crossbow: Arc<crossbow::Crossbow>,
 
     settings: Mutex<Settings>,
 
@@ -152,6 +163,193 @@ fn reset_stats(state: State<AppState>) {
 #[tauri::command]
 fn get_automation(state: State<AppState>) -> AutomationSettings {
     state.automator.settings()
+}
+
+#[tauri::command]
+fn get_fisher(state: State<AppState>) -> fisher::FisherSettings {
+    state.fisher.settings()
+}
+
+#[tauri::command]
+fn apply_fisher(
+    app: AppHandle,
+    state: State<AppState>,
+    config: fisher::FisherSettings,
+) -> fisher::FisherSettings {
+    state.fisher.apply(config);
+    let applied = state.fisher.settings();
+
+    let mut settings = state.settings.lock().unwrap();
+    settings.fisher = applied.clone();
+    let _ = settings::save(&app, &settings);
+
+    applied
+}
+
+#[tauri::command]
+fn get_fisher_status(state: State<AppState>) -> fisher::FisherStatus {
+    state.fisher.status()
+}
+
+#[tauri::command]
+fn toggle_fisher(state: State<AppState>) -> bool {
+    state.fisher.toggle()
+}
+
+#[tauri::command]
+fn stop_fisher(state: State<AppState>) {
+    state.fisher.set_running(false);
+}
+
+#[tauri::command]
+fn reset_fisher_counts(state: State<AppState>) {
+    state.fisher.reset_counts();
+}
+
+#[tauri::command]
+fn default_profile() -> settings::Profile {
+    settings::Profile::default()
+}
+
+#[tauri::command]
+fn get_gumdrop(state: State<AppState>) -> gumdrop::GumdropSettings {
+    state.gumdrop.settings()
+}
+
+#[tauri::command]
+fn apply_gumdrop(
+    app: AppHandle,
+    state: State<AppState>,
+    config: gumdrop::GumdropSettings,
+) -> gumdrop::GumdropSettings {
+    state.gumdrop.apply(config);
+    let applied = state.gumdrop.settings();
+
+    let mut settings = state.settings.lock().unwrap();
+    settings.gumdrop = applied.clone();
+    let _ = settings::save(&app, &settings);
+
+    applied
+}
+
+#[tauri::command]
+fn get_gumdrop_status(state: State<AppState>) -> gumdrop::GumdropStatus {
+    state.gumdrop.status()
+}
+
+#[tauri::command]
+fn fire_gumdrop(state: State<AppState>) {
+    state.gumdrop.fire();
+}
+
+#[tauri::command]
+fn get_skywars(state: State<AppState>) -> skywars::SkywarsSettings {
+    state.skywars.settings()
+}
+
+#[tauri::command]
+fn apply_skywars(
+    app: AppHandle,
+    state: State<AppState>,
+    config: skywars::SkywarsSettings,
+) -> skywars::SkywarsSettings {
+    state.skywars.apply(config);
+    let applied = state.skywars.settings();
+
+    let mut settings = state.settings.lock().unwrap();
+    settings.skywars = applied.clone();
+    let _ = settings::save(&app, &settings);
+
+    applied
+}
+
+#[tauri::command]
+fn get_skywars_status(state: State<AppState>) -> skywars::SkywarsStatus {
+    state.skywars.status()
+}
+
+#[tauri::command]
+fn fire_skywars(state: State<AppState>) {
+    state.skywars.fire();
+}
+
+#[tauri::command]
+fn get_davey(state: State<AppState>) -> davey::DaveySettings {
+    state.davey.settings()
+}
+
+#[tauri::command]
+fn apply_davey(
+    app: AppHandle,
+    state: State<AppState>,
+    config: davey::DaveySettings,
+) -> davey::DaveySettings {
+    state.davey.apply(config);
+    let applied = state.davey.settings();
+
+    let mut settings = settings::load(&app);
+    settings.davey = applied.clone();
+    let _ = settings::save(&app, &settings);
+
+    applied
+}
+
+#[tauri::command]
+fn get_davey_status(state: State<AppState>) -> davey::DaveyStatus {
+    state.davey.status()
+}
+
+#[tauri::command]
+fn fire_davey(state: State<AppState>) {
+    state.davey.fire();
+}
+
+#[tauri::command]
+fn get_crossbow(state: State<AppState>) -> crossbow::CrossbowSettings {
+    state.crossbow.settings()
+}
+
+#[tauri::command]
+fn apply_crossbow(
+    app: AppHandle,
+    state: State<AppState>,
+    config: crossbow::CrossbowSettings,
+) -> crossbow::CrossbowSettings {
+    state.crossbow.apply(config);
+    let applied = state.crossbow.settings();
+
+    let mut settings = settings::load(&app);
+    settings.crossbow = applied.clone();
+    let _ = settings::save(&app, &settings);
+
+    applied
+}
+
+#[tauri::command]
+fn get_crossbow_status(state: State<AppState>) -> crossbow::CrossbowStatus {
+    state.crossbow.status()
+}
+
+#[tauri::command]
+fn fire_crossbow(state: State<AppState>) {
+    state.crossbow.fire();
+}
+
+#[tauri::command]
+fn get_overlay(app: AppHandle) -> overlay::OverlaySettings {
+    settings::load(&app).overlay
+}
+
+#[tauri::command]
+fn apply_overlay(app: AppHandle, config: overlay::OverlaySettings) -> overlay::OverlaySettings {
+    let applied = config.sanitised();
+
+    let mut settings = settings::load(&app);
+    settings.overlay = applied.clone();
+    let _ = settings::save(&app, &settings);
+
+    overlay::apply(&app, &applied);
+    applied
 }
 
 #[tauri::command]
@@ -383,12 +581,12 @@ fn restore_window(app: &AppHandle) {
 }
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "Show BootsAutoClicker", true, None::<&str>)?;
+    let show = MenuItem::with_id(app, "show", "Show Syntax", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
 
     let mut tray = TrayIconBuilder::new()
-        .tooltip("BootsAutoClicker")
+        .tooltip("Syntax")
         .menu(&menu)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => restore_window(app),
@@ -466,8 +664,8 @@ pub fn run() {
     #[cfg(windows)]
     if !win32::claim_single_instance("BootsAutoClicker_single_instance") {
         eprintln!(
-            "BootsAutoClicker is already running — look for it in the system tray, \
-             or end BootsAutoClicker.exe in Task Manager."
+            "Syntax is already running — look for it in the system tray, \
+             or end Syntax.exe in Task Manager."
         );
         return;
     }
@@ -484,6 +682,12 @@ pub fn run() {
 
     builder
         .on_window_event(|window, event| {
+            // Only the main window hides instead of closing, and only the main
+            // window has a frame worth reasserting. The overlay must be free to
+            // actually close, or switching it off would only hide it.
+            if window.label() != "main" {
+                return;
+            }
 
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
@@ -522,6 +726,11 @@ pub fn run() {
             let shared = Arc::new(Shared::new(&initial));
             let automator = Arc::new(Automator::new(initial.automation.clone()));
             let capture = Arc::new(Capture::new());
+            let angler = fisher::Fisher::new(initial.fisher.clone());
+            let sweets = gumdrop::Gumdrop::new(initial.gumdrop.clone());
+            let looter = skywars::Skywars::new(initial.skywars.clone());
+            let miner = davey::Davey::new(initial.davey.clone());
+            let bow = crossbow::Crossbow::new(initial.crossbow.clone());
 
             let record = Arc::new(recorder::Recorder::new());
             recorder::attach(Arc::clone(&record));
@@ -535,6 +744,11 @@ pub fn run() {
                 automator: Arc::clone(&automator),
                 capture: Arc::clone(&capture),
                 recorder: Arc::clone(&record),
+                fisher: Arc::clone(&angler),
+                gumdrop: Arc::clone(&sweets),
+                skywars: Arc::clone(&looter),
+                davey: Arc::clone(&miner),
+                crossbow: Arc::clone(&bow),
                 settings: Mutex::new(initial.clone()),
                 light_theme: AtomicBool::new(light),
                 launched,
@@ -546,9 +760,17 @@ pub fn run() {
                 shared,
                 automator,
                 capture,
+                angler,
+                sweets,
+                looter,
+                miner,
+                bow,
                 launched,
             );
             build_tray(&handle)?;
+
+            // bring the overlay up if it was left switched on
+            overlay::apply(&handle, &initial.overlay);
 
             match app.get_webview_window("main") {
                 Some(window) => {
@@ -578,6 +800,31 @@ pub fn run() {
             get_automation_status,
             toggle_automation,
             stop_automation,
+            get_fisher,
+            apply_fisher,
+            get_fisher_status,
+            toggle_fisher,
+            stop_fisher,
+            reset_fisher_counts,
+            default_profile,
+            get_gumdrop,
+            apply_gumdrop,
+            get_gumdrop_status,
+            fire_gumdrop,
+            get_skywars,
+            apply_skywars,
+            get_skywars_status,
+            fire_skywars,
+            get_davey,
+            apply_davey,
+            get_davey_status,
+            fire_davey,
+            get_crossbow,
+            apply_crossbow,
+            get_crossbow_status,
+            fire_crossbow,
+            get_overlay,
+            apply_overlay,
             begin_position_capture,
             cursor_position,
             sample_pixel,

@@ -93,6 +93,11 @@ pub fn spawn(
     shared: Arc<Shared>,
     automator: Arc<Automator>,
     capture: Arc<Capture>,
+    fisher: Arc<crate::fisher::Fisher>,
+    gumdrop: Arc<crate::gumdrop::Gumdrop>,
+    skywars: Arc<crate::skywars::Skywars>,
+    davey: Arc<crate::davey::Davey>,
+    crossbow: Arc<crate::crossbow::Crossbow>,
     launched: Instant,
 ) {
     thread::Builder::new()
@@ -102,7 +107,14 @@ pub fn spawn(
             let mut bind_was_down: Vec<bool> = Vec::new();
             let mut auto_was_down = false;
             let mut panic_was_down = false;
+            let mut fish_was_down = false;
+            let mut shot_was_down = false;
+            let mut drop_was_down = false;
+            let mut sky_was_down = false;
+            let mut dvy_was_down = false;
+            let mut bow_was_down = false;
             let mut last_auto_running = false;
+            let mut last_fish_running = false;
             let mut last_push = Instant::now();
             let mut last_guard_check = Instant::now();
             let mut guard_state = false;
@@ -116,6 +128,7 @@ pub fn spawn(
 
             let mut visible = true;
             let mut last_visibility_check = Instant::now();
+            let mut last_overlay_check = Instant::now();
 
             loop {
                 thread::sleep(tick);
@@ -158,6 +171,12 @@ pub fn spawn(
                         *was = true;
                     }
                     auto_was_down = true;
+                    fish_was_down = true;
+                    shot_was_down = true;
+                    drop_was_down = true;
+                    sky_was_down = true;
+                    dvy_was_down = true;
+                    bow_was_down = true;
                     continue;
                 }
 
@@ -234,16 +253,70 @@ pub fn spawn(
                     let _ = app.emit("automation-changed", auto_running);
                 }
 
+                let fish_vk = fisher.bind_vk();
+                let fish_down = win32::bind_held(fish_vk);
+                if fish_down && !fish_was_down {
+                    fisher.toggle();
+                }
+                fish_was_down = fish_down;
+
+                let fish_running = fisher.is_running();
+                if fish_running != last_fish_running {
+                    last_fish_running = fish_running;
+                    let _ = app.emit("fisher-changed", fish_running);
+                }
+
+                let drop_vk = gumdrop.bind_vk();
+                let drop_down = win32::bind_held(drop_vk);
+                if drop_down && !drop_was_down {
+                    gumdrop.fire();
+                    let _ = app.emit("gumdrop-status", gumdrop.status());
+                }
+                drop_was_down = drop_down;
+
+                let sky_vk = skywars.bind_vk();
+                let sky_down = win32::bind_held(sky_vk);
+                if sky_down && !sky_was_down {
+                    skywars.fire();
+                    let _ = app.emit("skywars-status", skywars.status());
+                }
+                sky_was_down = sky_down;
+
+                let dvy_vk = davey.bind_vk();
+                let dvy_down = dvy_vk != 0 && win32::bind_held(dvy_vk);
+                if dvy_down && !dvy_was_down {
+                    davey.fire();
+                    let _ = app.emit("davey-status", davey.status());
+                }
+                dvy_was_down = dvy_down;
+
+                let bow_vk = crossbow.bind_vk();
+                let bow_down = bow_vk != 0 && win32::bind_held(bow_vk);
+                if bow_down && !bow_was_down {
+                    crossbow.fire();
+                    let _ = app.emit("crossbow-status", crossbow.status());
+                }
+                bow_was_down = bow_down;
+
+                let shot_down = win32::bind_held(0x78);
+                if shot_down && !shot_was_down {
+                    let _ = fisher.snapshot();
+                    let _ = app.emit("fisher-status", fisher.status());
+                }
+                shot_was_down = shot_down;
+
                 let panic_vk = shared.panic_vk.load(Ordering::Relaxed);
                 let panic_down = win32::bind_held(panic_vk);
                 if panic_down && !panic_was_down {
                     clickers.stop_all();
                     automator.set_running(false);
+                    fisher.set_running(false);
                 }
                 panic_was_down = panic_down;
 
                 tick = if capture.is_armed()
                     || auto_running
+                    || fish_running
                     || engines.iter().any(|e| e.is_active())
                 {
                     busy_tick
@@ -253,12 +326,25 @@ pub fn spawn(
 
                 if last_visibility_check.elapsed() >= Duration::from_millis(500) {
                     last_visibility_check = Instant::now();
-                    visible = app
+
+                    let main_up = app
                         .get_webview_window("main")
                         .map(|w| {
                             w.is_visible().unwrap_or(true) && !w.is_minimized().unwrap_or(false)
                         })
                         .unwrap_or(false);
+
+                    // the overlay needs the same stream of numbers, and it is
+                    // usually up precisely when the main window is not
+                    visible = main_up || crate::overlay::is_up(&app);
+                }
+
+                // let the overlay come and go with whatever is in front
+                if last_overlay_check.elapsed() >= Duration::from_millis(400)
+                    && crate::overlay::is_up(&app)
+                {
+                    last_overlay_check = Instant::now();
+                    crate::overlay::follow_foreground(&app, &win32::foreground_title());
                 }
 
                 if changed || (visible && last_push.elapsed() >= Duration::from_millis(120)) {
@@ -268,6 +354,9 @@ pub fn spawn(
                         build_status(&clickers, capture.is_armed(), launched),
                     );
                     let _ = app.emit("automation-status", automator.status());
+                    let _ = app.emit("fisher-status", fisher.status());
+                    let _ = app.emit("gumdrop-status", gumdrop.status());
+                    let _ = app.emit("skywars-status", skywars.status());
                 }
             }
         })

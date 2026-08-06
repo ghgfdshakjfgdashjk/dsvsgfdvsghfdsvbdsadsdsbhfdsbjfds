@@ -140,7 +140,11 @@ body {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  border-radius: var(--radius);
+  /* Windows already rounds this window's corners, and it does so in real
+     pixels. Rounding here as well would cut a slightly different curve at
+     any display scaling above 100%, leaving a sliver of nothing at each
+     corner. Let the compositor be the only one that rounds. */
+  border-radius: 0;
   overflow: hidden;
   isolation: isolate;
   background:
@@ -608,6 +612,287 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 11px;
+}
+
+.fish-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.fish-row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: rgba(var(--sunken), 0.5);
+}
+
+.fish-swatch {
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.fish-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fish-note {
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.fish-count {
+  min-width: 30px;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.keybind.compact {
+  padding: 5px 9px;
+}
+
+.macro-entry {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid hsl(var(--acc-h) calc(40% * var(--sat)) 52% / 0.22);
+  border-radius: 13px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--acc-h) calc(52% * var(--sat)) 26% / 0.42),
+    hsl(var(--acc-h2) calc(46% * var(--sat)) 20% / 0.3)
+  );
+  color: var(--text);
+  text-align: left;
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+
+.macro-entry:hover {
+  border-color: hsl(var(--acc-h) calc(58% * var(--sat)) 60% / 0.42);
+}
+
+.macro-entry:active {
+  transform: scale(0.995);
+}
+
+.macro-art {
+  width: 42px;
+  height: 56px;
+  object-fit: contain;
+  flex: none;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+}
+
+.macro-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.macro-name {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+}
+
+.macro-note {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.macro-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: rgba(var(--sunken), 0.9);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.macro-dot.live {
+  background: #46d67e;
+  box-shadow: 0 0 8px rgba(70, 214, 126, 0.7);
+}
+
+.macro-chevron {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--text-dim);
+  transition: transform 0.2s ease;
+}
+
+.macro-entry.open .macro-chevron {
+  transform: rotate(180deg);
+}
+
+.macro-entry.open {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.macro-body {
+  display: none;
+}
+
+.macro-body.open {
+  display: block;
+  padding: 9px;
+  border: 1px solid hsl(var(--acc-h) calc(40% * var(--sat)) 52% / 0.22);
+  border-top: none;
+  border-radius: 0 0 13px 13px;
+  background: rgba(var(--sunken), 0.34);
+  animation: macroIn 0.18s ease;
+}
+
+.macro-body .card {
+  padding: 8px 10px;
+  border-radius: 9px;
+}
+
+.macro-body .grid-2 {
+  gap: 8px;
+}
+
+.macro-body > .card,
+.macro-body > .grid-2 {
+  margin-bottom: 8px;
+}
+
+.macro-body > :last-child {
+  margin-bottom: 0;
+}
+
+.macro-body .hero {
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.macro-body .hero-label {
+  font-size: 9px;
+  letter-spacing: 0.85px;
+}
+
+.macro-body .hero-status {
+  font-size: 16px;
+}
+
+.macro-body .hero-sub {
+  font-size: 10px;
+}
+
+.macro-body .power {
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+
+.macro-body .power svg {
+  width: 15px;
+  height: 15px;
+}
+
+.macro-body .field-label {
+  font-size: 9px;
+  margin-bottom: 5px;
+}
+
+.macro-body .hint {
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.macro-body .fish-grid {
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.macro-body .fish-row {
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 7px;
+}
+
+.macro-body .fish-name {
+  font-size: 11px;
+}
+
+.macro-body .fish-count {
+  font-size: 11px;
+  min-width: 24px;
+}
+
+.macro-body .fish-swatch {
+  width: 11px;
+  height: 11px;
+  margin-left: 4px;
+}
+
+.macro-body .keycap {
+  min-width: 46px;
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
+.macro-body .keybind-hint {
+  font-size: 10px;
+}
+
+.macro-body .ghost-btn {
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
+.macro-body .trace {
+  max-height: 148px;
+  padding: 7px 9px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+@keyframes macroIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.trace {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  max-height: 190px;
+  overflow-y: auto;
+  border-radius: 9px;
+  background: rgba(var(--sunken), 0.6);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  color: var(--text-dim);
+}
+
+.search-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .field-label {
@@ -1276,6 +1561,12 @@ input:disabled {
   transition: all 0.16s ease;
 }
 
+.chip.on {
+  color: #fff;
+  border-color: transparent;
+  background: var(--acc-500);
+}
+
 .chip:hover {
   color: #fff;
   border-color: transparent;
@@ -1291,6 +1582,80 @@ input:disabled {
   font: inherit !important;
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+.macro-body .tag-input {
+  width: 52px !important;
+}
+
+/* Windows draws its own number spinner as a white box that cannot be
+   themed, so it stays hidden and these take its place. */
+.stepper {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 7px;
+  align-self: center;
+}
+
+.stepper button {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 17px;
+  height: 10px;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--stroke);
+  border-radius: 4px;
+  background: var(--glass);
+  color: var(--acc-200);
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.stepper button:hover {
+  background: var(--glass-hi);
+  border-color: var(--acc-400);
+  color: var(--text);
+}
+
+.stepper button:active {
+  background: var(--acc-600);
+  color: #fff;
+}
+
+.stepper svg {
+  width: 7px;
+  height: 4px;
+  display: block;
+  fill: currentColor;
+}
+
+/* Windows draws a white ring around whatever holds focus. Nothing here
+   should show it for a mouse click. Keyboard users still get a ring when
+   tabbing, in the right colour. */
+button:focus,
+.nav-item:focus,
+.keybind:focus,
+.ghost-btn:focus,
+.switch:focus {
+  outline: none;
+}
+
+button:focus-visible,
+.nav-item:focus-visible {
+  outline: 2px solid var(--acc-400);
+  outline-offset: 2px;
+}
+
+.stepper button:focus,
+.stepper button:focus-visible {
+  outline: none;
 }
 
 .tag-input:focus {
@@ -1960,4 +2325,52 @@ code {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+.credit-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 11px;
+}
+
+.credit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 180px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--stroke);
+  background: rgba(var(--sunken), 0.42);
+}
+
+.credit-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 9px;
+  background: linear-gradient(150deg, var(--acc-500), var(--acc-alt));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.credit-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.credit-name {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.credit-where {
+  font-size: 11px;
+  color: var(--text-faint);
 }

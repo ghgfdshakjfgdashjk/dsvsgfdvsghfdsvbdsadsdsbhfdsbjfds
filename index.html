@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BootsAutoClicker</title>
+    <title>Syntax</title>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
 
@@ -21,12 +21,13 @@
         <div class="brand" data-tauri-drag-region>
           <span class="mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none">
-              <path d="M5 3.2 18.6 11 12.4 12.6 9.6 18.4Z" fill="currentColor" />
-              <circle cx="17.4" cy="16.6" r="3.1" stroke="currentColor" stroke-width="1.6" opacity=".55" />
+              <path d="M8.4 3.6H3.6v4.8M15.6 3.6h4.8v4.8M8.4 20.4H3.6v-4.8M15.6 20.4h4.8v-4.8"
+                stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M14.6 8.2 9.4 15.8" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
             </svg>
           </span>
           <span class="brand-text" data-tauri-drag-region>
-            <b>Boots</b>AutoClicker
+            <b>Syn</b>tax
           </span>
           <span class="state-dot" id="titleDot" data-tauri-drag-region></span>
         </div>
@@ -78,6 +79,10 @@
             <svg viewBox="0 0 24 24" fill="none"><path d="M4 5h9M4 12h16M4 19h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="17" cy="5" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="11" cy="19" r="2.4" stroke="currentColor" stroke-width="1.7"/></svg>
             <span>Automation</span>
           </button>
+          <button class="nav-item" data-tab="macros" type="button">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.4 3.6 7.8 12 12.2l8.4-4.4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.6 12.2 12 16.6l8.4-4.4M3.6 16.4 12 20.8l8.4-4.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Macros</span>
+          </button>
           <button class="nav-item" data-tab="optimize" type="button">
             <svg viewBox="0 0 24 24" fill="none"><path d="M13.4 2.6 4.2 13.4h6.1l-.7 8 9.2-10.8h-6.1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
             <span>Optimize</span>
@@ -87,7 +92,7 @@
             <span>Suggest</span>
           </button>
           <button class="nav-item" data-tab="settings" type="button">
-            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.6v2.4M12 18v2.4M3.6 12h2.4M18 12h2.4M6.1 6.1l1.7 1.7M16.2 16.2l1.7 1.7M17.9 6.1l-1.7 1.7M7.8 16.2l-1.7 1.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M10.36 4.89L10.68 2.59A9.5 9.5 0 0 1 13.32 2.59L13.64 4.89A7.3 7.3 0 0 1 15.87 5.81L17.72 4.41A9.5 9.5 0 0 1 19.59 6.28L18.19 8.13A7.3 7.3 0 0 1 19.11 10.36L21.41 10.68A9.5 9.5 0 0 1 21.41 13.32L19.11 13.64A7.3 7.3 0 0 1 18.19 15.87L19.59 17.72A9.5 9.5 0 0 1 17.72 19.59L15.87 18.19A7.3 7.3 0 0 1 13.64 19.11L13.32 21.41A9.5 9.5 0 0 1 10.68 21.41L10.36 19.11A7.3 7.3 0 0 1 8.13 18.19L6.28 19.59A9.5 9.5 0 0 1 4.41 17.72L5.81 15.87A7.3 7.3 0 0 1 4.89 13.64L2.59 13.32A9.5 9.5 0 0 1 2.59 10.68L4.89 10.36A7.3 7.3 0 0 1 5.81 8.13L4.41 6.28A9.5 9.5 0 0 1 6.28 4.41L8.13 5.81Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.05" stroke="currentColor" stroke-width="1.7"/></svg>
             <span>Settings</span>
           </button>
 
@@ -567,9 +572,9 @@
                   <p class="hint">
                     Braced tokens are buttons, keys and timing; everything else is typed
                     literally. The whole script counts as one repetition, so your CPS
-                    becomes repetitions per second. Any <code>{WAITMS}</code> inside it
-                    adds to the delay rather than fitting inside it — a 10&nbsp;ms wait
-                    at a 10&nbsp;ms delay repeats every 20&nbsp;ms.
+                    becomes repetitions per second. A wait inside it adds to the delay
+                    rather than fitting inside it, so a ten millisecond wait at a ten
+                    millisecond delay repeats every twenty milliseconds.
                   </p>
                   <p class="hint">
                     Clicks: <code>{LMB}</code> <code>{RMB}</code> <code>{MMB}</code>
@@ -585,9 +590,8 @@
                   </p>
                 </div>
                 <p class="hint tight">
-                  <code>{LMBD}{WAITMS:10}{LMBU}</code> presses, holds ten milliseconds,
-                  then releases. Any script containing a wait is played step by step
-                  rather than batched, so it can't reach five-figure rates.
+                  Any script containing a wait is played step by step rather than
+                  batched, so it can't reach five-figure rates.
                 </p>
                 </div>
               </div>
@@ -695,6 +699,479 @@
                 position — use <b>Pick</b> to point at the spot instead of typing numbers.
                 <b>Type</b> understands the same <code>{ENTER}</code> tokens as sequences.
               </p>
+            </div>
+          </section>
+
+          <section class="panel" data-panel="macros">
+            <div class="panel-head">
+              <h1>Macros</h1>
+              <p>Ready-made routines that watch the screen and play themselves.</p>
+            </div>
+
+            <button class="macro-entry" id="fisherEntry" type="button" aria-expanded="false">
+              <img class="macro-art" src="/src/assets/fisher.png" alt="" />
+              <span class="macro-text">
+                <span class="macro-name">Fisher</span>
+                <span class="macro-note" id="fisherEntryNote">Stopped</span>
+              </span>
+              <span class="macro-dot" id="fisherEntryDot"></span>
+              <svg class="macro-chevron" viewBox="0 0 24 24" fill="none">
+                <path d="M8 10l4 4 4-4" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+
+            <div class="macro-body" id="fisherBody">
+            <div class="card hero" id="fisherHero">
+              <div class="hero-left">
+                <span class="hero-label">Fisher Macro</span>
+                <span class="hero-status" id="fisherStatus">Stopped</span>
+                <span class="hero-sub" id="fisherSub">Press F8 to run</span>
+              </div>
+              <button class="power" id="btnFisherRun" type="button">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M7 4.8 19 12 7 19.2Z" fill="currentColor" />
+                </svg>
+                <span id="fisherRunLabel">Run</span>
+              </button>
+            </div>
+
+            <div class="card">
+              <label class="field-label">Catch these</label>
+              <p class="hint tight">
+                Anything switched off gets cancelled the moment it bites, then the rod
+                goes back out.
+              </p>
+              <div class="fish-grid" id="fishGrid"></div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <label class="field-label">Hotkey</label>
+                <label class="switch">
+                  <input type="checkbox" id="fisherBindEnabled" checked />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <div class="collapse" id="fisherBindWrap">
+                <div>
+                  <button class="keybind" id="btnFisherBind" type="button" style="margin-top: 11px">
+                    <span class="keycap" id="fisherBindLabel">None</span>
+                    <span class="keybind-hint">click to rebind</span>
+                  </button>
+                </div>
+              </div>
+              <div class="row-between" style="margin-top: 13px">
+                <label class="field-label">Session</label>
+                <button class="ghost-btn" id="btnFisherReset" type="button">Reset counts</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <label class="field-label">Last few seconds</label>
+                <button class="ghost-btn" id="btnFisherCopy" type="button">Copy</button>
+              </div>
+              <p class="hint tight">
+                What it saw while reeling. <code>mark</code> is the fish,
+                <code>bar</code> is your slider. Lines starting <code>marker #</code>
+                are colours it didn't recognise.
+              </p>
+              <pre class="trace" id="fisherTrace">Nothing recorded yet.</pre>
+              <p class="hint">
+                Press <b>F9</b> at any time to save a picture of exactly what the macro
+                is looking at. It lands on your Desktop as <code>fisher-….bmp</code>.
+              </p>
+            </div>
+
+            <div class="card">
+              <p class="hint">
+                Cast with the rod equipped and the game focused. It finds the catch bar
+                itself, reads the fish from the sprite above the marker, and holds the
+                slider on it. Anything switched off is cancelled with Space and the rod
+                goes straight back out.
+              </p>
+            </div>
+            </div>
+
+            <button class="macro-entry" id="dropEntry" type="button" aria-expanded="false">
+              <img class="macro-art" src="/src/assets/gumdrop.png" alt="" />
+              <span class="macro-text">
+                <span class="macro-name">Gumdrop</span>
+                <span class="macro-note" id="dropEntryNote">Ready</span>
+              </span>
+              <span class="macro-dot" id="dropEntryDot"></span>
+              <svg class="macro-chevron" viewBox="0 0 24 24" fill="none">
+                <path d="M8 10l4 4 4-4" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+
+            <div class="macro-body" id="dropBody">
+              <div class="grid-2">
+                <div class="card">
+                  <div class="row-between">
+                    <label class="field-label">Gumdrop slot</label>
+                    <span class="value-tag">
+                      <input type="number" id="dropGumSlot" class="tag-input" min="1" max="9" step="1" />
+                    </span>
+                  </div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <label class="field-label">Pickaxe slot</label>
+                    <span class="value-tag">
+                      <input type="number" id="dropPickSlot" class="tag-input" min="1" max="9" step="1" />
+                    </span>
+                  </div>
+                  <div class="row-between" style="margin-top: 13px">
+                    <label class="field-label">Sword slot</label>
+                    <span class="value-tag">
+                      <input type="number" id="dropSwordSlot" class="tag-input" min="1" max="9" step="1" />
+                    </span>
+                  </div>
+                  <p class="hint tight">
+                    Hotbar numbers, 1 to 9. It ends back on the sword.
+                  </p>
+                </div>
+
+                <div class="card">
+                  <div class="row-between">
+                    <label class="field-label">Hotkey</label>
+                    <label class="switch">
+                      <input type="checkbox" id="dropBindEnabled" checked />
+                      <span class="track"></span>
+                    </label>
+                  </div>
+                  <div class="collapse" id="dropBindWrap">
+                    <div>
+                      <button class="keybind" id="btnDropBind" type="button" style="margin-top: 11px">
+                        <span class="keycap" id="dropBindLabel">None</span>
+                        <span class="keybind-hint">click to rebind</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <label class="field-label">Timing</label>
+                <p class="hint tight">
+                  All in milliseconds. Zero sends the press and release together, which
+                  is as fast as Windows allows — drop each one until the game stops
+                  keeping up, then go back a step.
+                </p>
+                <div class="search-grid">
+                  <span class="value-tag">
+                    Holding a slot key
+                    <input type="number" id="dropKeyHold" class="tag-input" min="0" max="2000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    Holding a click
+                    <input type="number" id="dropClickHold" class="tag-input" min="0" max="2000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    After picking the gumdrop
+                    <input type="number" id="dropAfterGum" class="tag-input" min="0" max="5000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    After placing the gumdrop
+                    <input type="number" id="dropWait" class="tag-input" min="0" max="5000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    After picking the pickaxe
+                    <input type="number" id="dropAfterPick" class="tag-input" min="0" max="5000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    After breaking it
+                    <input type="number" id="dropAfterBreak" class="tag-input" min="0" max="5000" step="1" />
+                  </span>
+                </div>
+                <p class="hint" id="dropTotal"></p>
+              </div>
+
+              <div class="card">
+                <div class="row-between">
+                  <div>
+                    <label class="field-label">Run</label>
+                    <p class="hint tight" id="dropRuns">Not run yet</p>
+                  </div>
+                  <button class="ghost-btn" id="btnDropRun" type="button">Run once</button>
+                </div>
+                <p class="hint">
+                  One press swaps to the gumdrop, places it, waits, swaps to the pickaxe
+                  and breaks it. It runs once per press — not a toggle, and not held.
+                </p>
+              </div>
+            </div>
+
+            <button class="macro-entry" id="skyEntry" type="button" aria-expanded="false">
+              <img class="macro-art" src="/src/assets/skywars.png" alt="" />
+              <span class="macro-text">
+                <span class="macro-name">Skywars</span>
+                <span class="macro-note" id="skyEntryNote">Ready</span>
+              </span>
+              <span class="macro-dot" id="skyEntryDot"></span>
+              <svg class="macro-chevron" viewBox="0 0 24 24" fill="none">
+                <path d="M8 10l4 4 4-4" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+
+            <div class="macro-body" id="skyBody">
+              <div class="card">
+                <div class="row-between">
+                  <label class="field-label">Hotkey</label>
+                  <label class="switch">
+                    <input type="checkbox" id="skyBindEnabled" checked />
+                    <span class="track"></span>
+                  </label>
+                </div>
+                <div class="collapse" id="skyBindWrap">
+                  <div>
+                    <button class="keybind" id="btnSkyBind" type="button" style="margin-top: 11px">
+                      <span class="keycap" id="skyBindLabel">None</span>
+                      <span class="keybind-hint">click to rebind</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="row-between" style="margin-top: 13px">
+                  <label class="field-label">Put the cursor back afterwards</label>
+                  <label class="switch">
+                    <input type="checkbox" id="skyRestore" checked />
+                    <span class="track"></span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="card">
+                <label class="field-label">Clicking</label>
+                <p class="hint tight">Milliseconds, apart from the click count.</p>
+                <div class="search-grid">
+                  <span class="value-tag">
+                    Clicks per item
+                    <input type="number" id="skyClicks" class="tag-input" min="1" max="5" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    Settle after moving
+                    <input type="number" id="skySettle" class="tag-input" min="0" max="2000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    Holding a click
+                    <input type="number" id="skyClickHold" class="tag-input" min="0" max="2000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    Gap between clicks
+                    <input type="number" id="skyRetryGap" class="tag-input" min="0" max="2000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    Between items
+                    <input type="number" id="skyBetween" class="tag-input" min="0" max="5000" step="1" />
+                  </span>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="row-between">
+                  <div>
+                    <label class="field-label">Run</label>
+                    <p class="hint tight" id="skyNote">Not run yet</p>
+                  </div>
+                  <button class="ghost-btn" id="btnSkyRun" type="button">Run once</button>
+                </div>
+                <p class="hint">
+                  Open the chest first, then press the key. It finds the grid on screen,
+                  works out which slots hold something, and clicks each one. Runs once per
+                  press.
+                </p>
+              </div>
+            </div>
+
+
+            <button class="macro-entry" id="dvyEntry" type="button" aria-expanded="false">
+              <img class="macro-art" src="/src/assets/davey.png" alt="" />
+              <span class="macro-text">
+                <span class="macro-name">Davey</span>
+                <span class="macro-note" id="dvyEntryNote">Ready</span>
+              </span>
+              <span class="macro-dot" id="dvyEntryDot"></span>
+              <svg class="macro-chevron" viewBox="0 0 24 24" fill="none">
+                <path d="M8 10l4 4 4-4" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+
+            <div class="macro-body" id="dvyBody">
+              <div class="card">
+                <div class="row-between">
+                  <label class="field-label">Hotkey</label>
+                  <label class="switch">
+                    <input type="checkbox" id="dvyBindEnabled" />
+                    <span class="track"></span>
+                  </label>
+                </div>
+                <div class="collapse" id="dvyBindWrap">
+                  <div>
+                    <button class="keybind" id="btnDvyBind" type="button" style="margin-top: 11px">
+                      <span class="keycap" id="dvyBindLabel">None</span>
+                      <span class="keybind-hint">click to rebind</span>
+                    </button>
+                  </div>
+                </div>
+                <p class="hint">
+                  Runs once per press: holds a key down, switches to your pickaxe
+                  immediately, and starts clicking the instant the key is released.
+                </p>
+              </div>
+
+              <div class="card">
+                <label class="field-label">Key to hold</label>
+                <p class="hint tight">Held down for the whole run, not just the start.</p>
+                <button class="keybind" id="btnDvyHoldKey" type="button" style="margin-top: 11px">
+                  <span class="keycap" id="dvyHoldLabel">X</span>
+                  <span class="keybind-hint">click to rebind</span>
+                </button>
+              </div>
+
+              <div class="card">
+                <label class="field-label">Slot</label>
+                <p class="hint tight">Which number key your pickaxe is on.</p>
+                <div class="search-grid">
+                  <span class="value-tag">
+                    Pickaxe slot
+                    <input type="number" id="dvyPickSlot" class="tag-input" min="1" max="9" step="1" />
+                  </span>
+                </div>
+              </div>
+
+              <div class="card">
+                <label class="field-label">Timing</label>
+                <p class="hint tight">
+                  Milliseconds, except the rate and the percentage. <b>Total time held</b>
+                  is when the launch lands and so when the clicking starts — the release
+                  and the first click go out together. 417 ms is 25 frames of a 60fps
+                  clock. A game reads the button once a frame, so <b>button down %</b>
+                  decides whether it sees a press at all; raise it if clicks are missed.
+                </p>
+                <div class="search-grid">
+                  <span class="value-tag">
+                    Total time held
+                    <input type="number" id="dvyHoldMs" class="tag-input" min="0" max="10000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    Holding the slot key
+                    <input type="number" id="dvyKeyHold" class="tag-input" min="0" max="2000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    Clicking for
+                    <input type="number" id="dvyBurstMs" class="tag-input" min="0" max="10000" step="10" />
+                  </span>
+                  <span class="value-tag">
+                    Clicks per second
+                    <input type="number" id="dvyBurstCps" class="tag-input" min="1" max="50000" step="50" />
+                  </span>
+                  <span class="value-tag">
+                    Button down %
+                    <input type="number" id="dvyBurstDuty" class="tag-input" min="5" max="95" step="5" />
+                  </span>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="row-between">
+                  <div>
+                    <label class="field-label">Run</label>
+                    <p class="hint tight" id="dvyRuns">Not run yet</p>
+                  </div>
+                  <button class="ghost-btn" id="btnDvyRun" type="button">Run once</button>
+                </div>
+              </div>
+            </div>
+
+            <button class="macro-entry" id="bowEntry" type="button" aria-expanded="false">
+              <img class="macro-art" src="/src/assets/crossbow.png" alt="" />
+              <span class="macro-text">
+                <span class="macro-name">Crossbow</span>
+                <span class="macro-note" id="bowEntryNote">Ready</span>
+              </span>
+              <span class="macro-dot" id="bowEntryDot"></span>
+              <svg class="macro-chevron" viewBox="0 0 24 24" fill="none">
+                <path d="M8 10l4 4 4-4" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+
+            <div class="macro-body" id="bowBody">
+              <div class="card">
+                <div class="row-between">
+                  <label class="field-label">Hotkey</label>
+                  <label class="switch">
+                    <input type="checkbox" id="bowBindEnabled" />
+                    <span class="track"></span>
+                  </label>
+                </div>
+                <div class="collapse" id="bowBindWrap">
+                  <div>
+                    <button class="keybind" id="btnBowBind" type="button" style="margin-top: 11px">
+                      <span class="keycap" id="bowBindLabel">None</span>
+                      <span class="keybind-hint">click to rebind</span>
+                    </button>
+                  </div>
+                </div>
+                <p class="hint">
+                  Runs once per press: swaps to the crossbow, shoots, swaps back to your
+                  sword. This can share a key with a clicker — both will fire.
+                </p>
+              </div>
+
+              <div class="card">
+                <label class="field-label">Slots</label>
+                <p class="hint tight">Which number key each one is on.</p>
+                <div class="search-grid">
+                  <span class="value-tag">
+                    Crossbow slot
+                    <input type="number" id="bowSlot" class="tag-input" min="1" max="9" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    Sword slot
+                    <input type="number" id="bowSwordSlot" class="tag-input" min="1" max="9" step="1" />
+                  </span>
+                </div>
+              </div>
+
+              <div class="card">
+                <label class="field-label">Timing</label>
+                <p class="hint tight">
+                  Milliseconds. The game reads the mouse once a frame, so the shot has to
+                  be held longer than a frame to register — raise it if shots are missed.
+                </p>
+                <div class="search-grid">
+                  <span class="value-tag">
+                    Holding the slot key
+                    <input type="number" id="bowKeyHold" class="tag-input" min="0" max="2000" step="1" />
+                  </span>
+                  <span class="value-tag">
+                    Before shooting
+                    <input type="number" id="bowAfterSwitch" class="tag-input" min="0" max="5000" step="5" />
+                  </span>
+                  <span class="value-tag">
+                    Holding the shot
+                    <input type="number" id="bowClickHold" class="tag-input" min="0" max="2000" step="5" />
+                  </span>
+                  <span class="value-tag">
+                    Before swapping back
+                    <input type="number" id="bowAfterClick" class="tag-input" min="0" max="5000" step="5" />
+                  </span>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="row-between">
+                  <div>
+                    <label class="field-label">Run</label>
+                    <p class="hint tight" id="bowRuns">Not run yet</p>
+                  </div>
+                  <button class="ghost-btn" id="btnBowRun" type="button">Run once</button>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -1101,6 +1578,108 @@
                 <p class="hint tight">Counted since launch. CPU is averaged over that whole time.</p>
                 <button class="ghost-btn" id="btnResetStats" type="button">Reset</button>
               </div>
+            </div>
+
+            <div class="card span-2">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Overlay</label>
+                  <p class="hint tight">
+                    A small always-on-top readout of whichever clicker is running. It
+                    ignores the mouse, so clicks pass straight through it.
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="overlayEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+
+              <div class="collapse" id="overlayWrap">
+                <div>
+                  <label class="field-label" style="margin-top: 13px">Where it sits</label>
+                  <div class="chip-row" id="overlaySpots" style="margin-top: 9px">
+                    <button class="chip" data-spot="top-left" type="button">Top left</button>
+                    <button class="chip" data-spot="top-right" type="button">Top right</button>
+                    <button class="chip" data-spot="bottom-left" type="button">Bottom left</button>
+                    <button class="chip" data-spot="bottom-right" type="button">Bottom right</button>
+                    <button class="chip" data-spot="custom" type="button">Exact spot</button>
+                  </div>
+
+                  <div class="collapse" id="overlayXY">
+                    <div>
+                      <div class="search-grid" style="margin-top: 11px">
+                        <span class="value-tag">
+                          X
+                          <input type="number" id="overlayX" class="tag-input" min="-32000" max="32000" step="10" />
+                        </span>
+                        <span class="value-tag">
+                          Y
+                          <input type="number" id="overlayY" class="tag-input" min="-32000" max="32000" step="10" />
+                        </span>
+                      </div>
+                      <p class="hint">
+                        Screen pixels from the top-left of your main display.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="row-between" style="margin-top: 15px">
+                    <div>
+                      <label class="field-label">Only in certain windows</label>
+                      <p class="hint tight">
+                        Hide it unless one of these is the window in front.
+                      </p>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="overlayOnlyIn" />
+                      <span class="track"></span>
+                    </label>
+                  </div>
+
+                  <div class="collapse" id="overlayNamesWrap">
+                    <div>
+                      <input
+                        type="text"
+                        id="overlayNames"
+                        class="profile-name"
+                        spellcheck="false"
+                        placeholder="Roblox, Minecraft"
+                        style="margin-top: 11px; width: 100%"
+                      />
+                      <p class="hint">
+                        Separate names with commas. Part of the title is enough and
+                        capitals do not matter, so "roblox" matches any Roblox window.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card span-2">
+              <label class="field-label">Credits</label>
+              <p class="hint tight">Syntax is made by these two.</p>
+              <div class="credit-list">
+                <div class="credit">
+                  <span class="credit-avatar" aria-hidden="true">B</span>
+                  <span class="credit-text">
+                    <span class="credit-name">@bootsxx</span>
+                    <span class="credit-where">Discord</span>
+                  </span>
+                </div>
+                <div class="credit">
+                  <span class="credit-avatar" aria-hidden="true">D</span>
+                  <span class="credit-text">
+                    <span class="credit-name">@dark1234.</span>
+                    <span class="credit-where">Discord</span>
+                  </span>
+                </div>
+              </div>
+              <p class="hint">
+                Version <b id="creditVersion">—</b>. Found a bug or want something added?
+                The Suggest tab sends it straight to the issue tracker.
+              </p>
             </div>
           </section>
         </main>

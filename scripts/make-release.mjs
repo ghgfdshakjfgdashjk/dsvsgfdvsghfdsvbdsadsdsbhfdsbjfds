@@ -18,11 +18,17 @@ try {
   process.exit(1);
 }
 
-const installer = files.find((f) => f.endsWith("-setup.exe"));
-const signatureFile = files.find((f) => f.endsWith("-setup.exe.sig"));
+// Old builds stay in this folder, so match on the version being released --
+// picking merely "an installer" can pick up a previous one and point the
+// updater at a file that is not on the release.
+const installer = files.find((f) => f.includes(version) && f.endsWith("-setup.exe"));
+const signatureFile = files.find((f) => f.includes(version) && f.endsWith("-setup.exe.sig"));
 
 if (!installer) {
-  console.error("No installer in the bundle folder — the build didn't finish.");
+  console.error(
+    `No installer for ${version} in the bundle folder — the build didn't finish.\n` +
+      `Found: ${files.filter((f) => f.endsWith("-setup.exe")).join(", ") || "nothing"}`,
+  );
   process.exit(1);
 }
 
@@ -38,12 +44,12 @@ if (!signatureFile) {
 
 const manifest = {
   version,
-  notes: process.argv[2] ?? `BootsAutoClicker ${version}`,
+  notes: process.argv[2] ?? `Syntax ${version}`,
   pub_date: new Date().toISOString(),
   platforms: {
     "windows-x86_64": {
       signature: readFileSync(join(bundleDir, signatureFile), "utf8").trim(),
-      url: `https:
+      url: `https://github.com/${REPO}/releases/download/v${version}/${encodeURIComponent(installer)}`,
     },
   },
 };

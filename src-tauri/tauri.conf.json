@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "BootsAutoClicker",
-  "mainBinaryName": "BootsAutoClicker",
-  "version": "0.3.0",
+  "productName": "Syntax",
+  "mainBinaryName": "Syntax",
+  "version": "0.6.0",
   "identifier": "com.boots.autoclicker",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "BootsAutoClicker",
+        "title": "Syntax",
         "width": 980,
         "height": 600,
         "minWidth": 700,
