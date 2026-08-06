@@ -1,7 +1,8 @@
-# boots autoclicker
+# Syntax
 
-A very fast Windows autoclicker with a blue glassmorphism interface. Tauri v2 —
-Rust does the clicking, TypeScript draws the glass.
+A very fast Windows autoclicker, with game macros and a live overlay, behind a
+blue glassmorphism interface. Tauri v2 — Rust does the clicking, TypeScript
+draws the glass.
 
 All code here is original.
 
@@ -124,6 +125,45 @@ full-screen game — and keep the rate modest when you do.
 - **Acrylic** — richer, grainier blur. Can make dragging feel laggy on Windows 10.
 - **Panel opacity** and **always on top**.
 
+## Macros
+
+Each one is a dropdown on the Macros tab with its own hotkey, all off by
+default. They're built for specific Roblox games and mostly work by reading the
+screen or driving hotbar slots.
+
+- **Fisher** — watches for the fishing minigame and plays it. Pick which fish to
+  keep; anything switched off is cancelled instead of caught. It finds the
+  slider by colour and steers it with the mouse button.
+- **Gumdrop** — swap to the gumdrop, place it, swap to the pickaxe, break it,
+  swap back to the sword. Every step's timing is adjustable.
+- **Skywars** — open a chest, press the key, and it takes everything inside. It
+  finds the grid by looking for solid squares of the slot colour, and only ever
+  clicks rectangles it actually saw, so it can't stray onto the inventory beside
+  it. A slot counts as full if it differs in colour, shows sprite edges, or has
+  a spread of brightness — any one is enough, so pale, dark and brown items all
+  register.
+- **Davey** — holds a key, swaps to the pickaxe while it's still down, then
+  clicks flat out the instant it's released.
+- **Crossbow** — swap to the crossbow, shoot, swap back to the sword.
+
+Two details that turned out to matter across all of them. A game reads the mouse
+once a frame, so a press and release sent in the same instant can fall between
+two frames and never register — every macro holds buttons down for a real
+duration rather than pressing and releasing at once. And short `thread::sleep`
+calls overshoot by a whole timer tick on Windows, which at these lengths is most
+of the delay, so anything under about 1.5 ms spins instead.
+
+## Overlay
+
+A small always-on-top readout of whichever clicker is running, in the app's own
+gradient. It's a separate borderless transparent window that ignores the cursor,
+so clicks pass straight through to the game and it can never steal focus.
+
+Put it in any corner or at exact screen coordinates. Corners are worked out from
+the monitor it's actually on rather than assumed, so second screens and display
+scaling both land correctly. Optionally restrict it to certain windows — give it
+a list of names and it appears only while one of those is in front.
+
 ## Custom sequences
 
 Instead of one plain click, a repetition can be a short script. Braced tokens
@@ -156,6 +196,9 @@ preview strip under the input shows exactly what will fire.
 When sequence mode is on, the **Mouse button** setting is ignored — the script
 says what gets pressed.
 
+A sequence that presses without releasing can't leave a button stuck down: any
+button or key still held when you stop is released for you.
+
 ## A note on binds
 
 If the bind is set to the same mouse button the clicker presses, the synthetic
@@ -168,12 +211,25 @@ warning — pick a different button or a keyboard key.
 src/
   main.ts            UI state, wiring, events
   styles.css         blue glassmorphism
+  overlay.ts         the CPS overlay window
+  overlay.css        its styling
 index.html           shell markup
+overlay.html         overlay markup, built as a second page
 src-tauri/src/
-  lib.rs             Tauri commands, window glass
+  lib.rs             Tauri commands, tray, window glass
   engine.rs          the click loop
+  clickers.rs        the clicker profiles
   hotkeys.rs         global bind watcher
+  automation.rs      recorded step playback
+  recorder.rs        input recording
   sequence.rs        {LMB}eee parser + INPUT builder
+  optimize.rs        Windows tweaks and cleanup
+  overlay.rs         overlay window and placement
+  fisher.rs          fishing macro
+  gumdrop.rs         gumdrop macro
+  skywars.rs         chest looting macro
+  davey.rs           davey macro
+  crossbow.rs        crossbow macro
   win32.rs           hand-rolled Win32 FFI
   settings.rs        config + persistence
 ```
