@@ -7,6 +7,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::win32;
 
+/// A delay, kept sane and kept fractional.
+///
+/// These are held as fractions rather than whole milliseconds so the speed
+/// control can scale them and scale them back without drift. Halving 7 gives
+/// 3.5, not 4, so doubling it returns the 7 you started with. Only the wait
+/// itself rounds, and it rounds once, at the end.
+fn clamp_ms(value: f64, cap: f64) -> f64 {
+    if !value.is_finite() || value < 0.0 {
+        return 0.0;
+    }
+    value.min(cap)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct GumdropSettings {
@@ -15,12 +28,17 @@ pub struct GumdropSettings {
     pub gumdrop_slot: u32,
     pub pickaxe_slot: u32,
     pub sword_slot: u32,
-    pub key_hold_ms: u64,
-    pub click_hold_ms: u64,
-    pub after_gumdrop_ms: u64,
-    pub place_wait_ms: u64,
-    pub after_pickaxe_ms: u64,
-    pub after_break_ms: u64,
+    pub key_hold_ms: f64,
+    pub click_hold_ms: f64,
+    pub after_gumdrop_ms: f64,
+    pub place_wait_ms: f64,
+    pub after_pickaxe_ms: f64,
+    pub after_break_ms: f64,
+    /// Where the speed control was left, so it reads right next time.
+    ///
+    /// Nothing here uses it. Moving it rewrites the delays above directly, so
+    /// they are already the real numbers by the time they arrive.
+    pub speed: f64,
 }
 
 impl Default for GumdropSettings {
@@ -28,15 +46,20 @@ impl Default for GumdropSettings {
         GumdropSettings {
             bind_enabled: false,
             bind_vk: 0,
-            gumdrop_slot: 1,
+            gumdrop_slot: 4,
             pickaxe_slot: 2,
-            sword_slot: 3,
-            key_hold_ms: 12,
-            click_hold_ms: 12,
-            after_gumdrop_ms: 16,
-            place_wait_ms: 16,
-            after_pickaxe_ms: 16,
-            after_break_ms: 16,
+            sword_slot: 1,
+            // Slower than it needs to be, on purpose. The full swap-place-
+            // swap-break-swap run is hard to time by eye, and a first run
+            // that works and can be sped up beats a fast one that misses a
+            // step and leaves you holding the wrong item.
+            key_hold_ms: 16.0,
+            click_hold_ms: 16.0,
+            after_gumdrop_ms: 28.0,
+            place_wait_ms: 28.0,
+            after_pickaxe_ms: 28.0,
+            after_break_ms: 28.0,
+            speed: 1.0,
         }
     }
 }
@@ -46,12 +69,16 @@ impl GumdropSettings {
         self.gumdrop_slot = self.gumdrop_slot.clamp(1, 9);
         self.pickaxe_slot = self.pickaxe_slot.clamp(1, 9);
         self.sword_slot = self.sword_slot.clamp(1, 9);
-        self.key_hold_ms = self.key_hold_ms.min(2_000);
-        self.click_hold_ms = self.click_hold_ms.min(2_000);
-        self.after_gumdrop_ms = self.after_gumdrop_ms.min(5_000);
-        self.place_wait_ms = self.place_wait_ms.min(5_000);
-        self.after_pickaxe_ms = self.after_pickaxe_ms.min(5_000);
-        self.after_break_ms = self.after_break_ms.min(5_000);
+        self.key_hold_ms = clamp_ms(self.key_hold_ms, 2000.0);
+        self.click_hold_ms = clamp_ms(self.click_hold_ms, 2000.0);
+        self.after_gumdrop_ms = clamp_ms(self.after_gumdrop_ms, 5000.0);
+        self.place_wait_ms = clamp_ms(self.place_wait_ms, 5000.0);
+        self.after_pickaxe_ms = clamp_ms(self.after_pickaxe_ms, 5000.0);
+        self.after_break_ms = clamp_ms(self.after_break_ms, 5000.0);
+        if !self.speed.is_finite() || self.speed <= 0.0 {
+            self.speed = 1.0;
+        }
+        self.speed = self.speed.clamp(0.1, 10.0);
         self
     }
 }
@@ -127,12 +154,12 @@ impl Gumdrop {
     }
 }
 
-fn wait(ms: u64) {
-    if ms == 0 {
+fn wait(ms: f64) {
+    if !(ms > 0.0) {
         return;
     }
 
-    let span = Duration::from_millis(ms);
+    let span = Duration::from_secs_f64(ms / 1000.0);
     if span < Duration::from_micros(1500) {
         let until = Instant::now() + span;
         while Instant::now() < until {
@@ -143,8 +170,8 @@ fn wait(ms: u64) {
     }
 }
 
-fn tap(vk: u16, hold: u64) {
-    if hold == 0 {
+fn tap(vk: u16, hold: f64) {
+    if hold <= 0.0 {
         win32::send_inputs(&[win32::key_event(vk, false), win32::key_event(vk, true)]);
         return;
     }
@@ -154,10 +181,10 @@ fn tap(vk: u16, hold: u64) {
     win32::send_inputs(&[win32::key_event(vk, true)]);
 }
 
-fn click(hold: u64) {
+fn click(hold: f64) {
     let spec = win32::button_spec("left");
 
-    if hold == 0 {
+    if hold <= 0.0 {
         win32::send_inputs(&[
             win32::mouse_event(&spec, spec.down),
             win32::mouse_event(&spec, spec.up),

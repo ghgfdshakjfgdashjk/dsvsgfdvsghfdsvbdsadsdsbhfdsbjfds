@@ -6,6 +6,16 @@ draws the glass.
 
 All code here is original.
 
+## Download
+
+Installers are on the [releases page](https://github.com/Boots3453/Syntax/releases).
+
+Free code signing is provided by [SignPath.io](https://signpath.io), with a
+certificate by the [SignPath Foundation](https://signpath.org).
+
+Syntax collects nothing. Settings live in a local file, and the only thing it
+ever reaches the network for is checking GitHub for a new version.
+
 ## Running it
 
 ```bash
@@ -125,6 +135,63 @@ full-screen game — and keep the rate modest when you do.
 - **Acrylic** — richer, grainier blur. Can make dragging feel laggy on Windows 10.
 - **Panel opacity** and **always on top**.
 
+## Movement
+
+Permanent key rebinding, written into Windows rather than into Syntax.
+
+Windows keeps a table at `HKLM\SYSTEM\CurrentControlSet\Control\Keyboard Layout\
+Scancode Map` that it reads once, while booting, and applies below everything
+else. A key remapped there is remapped for the whole machine — every game, every
+program, the login screen, and Syntax not running at all.
+
+That is the point and also the catch. Nothing about it is live: writing the map
+changes nothing until you restart, and neither does clearing it. Nothing can make
+Windows re-read it sooner, because the only thing that reads it is the keyboard
+driver starting up. Both writing and clearing need administrator rights.
+
+Rebinds are stored as virtual keys and converted with `MAPVK_VK_TO_VSC_EX`, which
+keeps the `0xE0` prefix that separates the arrow keys and right control from the
+keypad keys sharing their scancodes — lose it and you move the wrong key. The
+panel reads the map back and says whether Windows is applying what's listed, so a
+restart you still owe is visible rather than assumed.
+
+The panel draws a full keyboard. Click the key you want to change, then click
+what it becomes; a remapped key shows its new meaning underneath its own name,
+so the drawing is a picture of the current state rather than a list you have to
+read against it. The whole layout is generated from key widths in units — 1 for a
+letter, 6.25 for a spacebar — so it scales by changing one number.
+
+A key can only appear on the left once; Windows reads the table top to bottom and
+ignores a second entry for the same key. **Off** maps a key to nothing, which is
+how a key gets disabled — Esc can't do it, since that already means cancel.
+**Reset to default** clears the list.
+
+Share codes never carry rebinds, in either direction. They're a change to a
+machine, not a preference.
+
+### SOCD
+
+Within a group, the key you pressed most recently is the one that counts. Let it
+go and whatever is still held takes over, without re-pressing anything.
+
+Groups, not pairs. Keys cancel only within their own group, which is why A/D and
+W/S are separate — one group of all four would mean pressing W cancelled A and
+you could never move diagonally. A group can hold as many keys as you like, so
+three or four keys fighting over one axis behaves the same way two do. A key in
+two groups would be released by one and re-pressed by the other, so the first
+group keeps it.
+
+It runs on its own low-level keyboard hook, separate from the recorder's, since
+this one can swallow an event. Two things have to be swallowed: the auto-repeat
+of a key that's held but not in charge — left alone, the keyboard's own repeat
+would re-press a key deliberately released — and the real release of a key that
+was already released downstream.
+
+**This one cannot outlive the app.** Deciding what a keypress means has to happen
+as it's pressed, which needs something running; there's no registry table for it.
+Syntax lives in the tray, so closing the window is enough, but quitting stops it.
+Quitting also releases anything the hook was holding, so no key is left stuck.
+
 ## Macros
 
 Each one is a dropdown on the Macros tab with its own hotkey, all off by
@@ -226,6 +293,8 @@ src-tauri/src/
   recorder.rs        input recording
   sequence.rs        {LMB}eee parser + INPUT builder
   optimize.rs        Windows tweaks and cleanup
+  movement.rs        permanent key rebinding via the scancode map
+  socd.rs            last-key-wins, on a suppressing keyboard hook
   overlay.rs         overlay window and placement
   fisher.rs          fishing macro
   gumdrop.rs         gumdrop macro

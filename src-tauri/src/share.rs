@@ -88,6 +88,10 @@ fn strip_local(settings: &mut Settings) {
     settings.cursor_image = String::new();
     settings.window_width = 0.0;
     settings.window_height = 0.0;
+    // Rebinds are a change to the machine, not a preference. They belong to
+    // whoever's keyboard it is, and nobody should be handing them around in
+    // a code.
+    settings.movement = crate::movement::MovementSettings::default();
 }
 
 pub fn export(settings: &Settings, scope: &str) -> String {
@@ -162,12 +166,15 @@ pub fn import(code: &str, current: &Settings) -> Result<Settings, String> {
         let presets = next.presets.clone();
         let profiles = next.profiles.clone();
         let selected = next.selected;
+        let rebinds = next.movement.clone();
 
         next = share.settings;
 
         next.cursor_image = cursor;
         next.window_width = width;
         next.window_height = height;
+        // never taken from a code, and never taken away by one
+        next.movement = rebinds;
         // your saved profiles are yours; a code should not replace the shelf
         next.presets = presets;
 

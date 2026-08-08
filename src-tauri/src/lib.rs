@@ -8,8 +8,10 @@ mod optimize;
 mod recorder;
 mod sequence;
 mod crossbow;
+mod movement;
 mod overlay;
 mod shake;
+mod socd;
 mod share;
 mod davey;
 mod skywars;
@@ -333,6 +335,62 @@ fn get_crossbow_status(state: State<AppState>) -> crossbow::CrossbowStatus {
     state.crossbow.status()
 }
 
+#[tauri::command]
+fn get_movement(app: AppHandle) -> movement::MovementSettings {
+    settings::load(&app).movement
+}
+
+/// Save the rebinds without touching the registry.
+///
+/// Editing the list and applying it are deliberately separate. Applying wants
+/// administrator rights and a restart, and neither belongs in the middle of
+/// someone typing.
+#[tauri::command]
+fn apply_movement(app: AppHandle, config: movement::MovementSettings) -> movement::MovementSettings {
+    let cleaned = config.sanitised();
+
+    let mut settings = settings::load(&app);
+    settings.movement = cleaned.clone();
+    let _ = settings::save(&app, &settings);
+
+    cleaned
+}
+
+/// What the registry says right now, and whether it agrees with the list.
+#[tauri::command]
+fn get_movement_state(app: AppHandle) -> movement::MapState {
+    movement::state(&settings::load(&app).movement)
+}
+
+/// Write the saved rebinds into the machine's scancode map.
+#[tauri::command]
+fn write_movement(app: AppHandle) -> Result<(), String> {
+    movement::apply(&settings::load(&app).movement)
+}
+
+/// Take the scancode map away, whatever is saved.
+#[tauri::command]
+fn clear_movement() -> Result<(), String> {
+    movement::clear()
+}
+
+#[tauri::command]
+fn get_socd(app: AppHandle) -> socd::SocdSettings {
+    settings::load(&app).socd
+}
+
+#[tauri::command]
+fn apply_socd(app: AppHandle, config: socd::SocdSettings) -> socd::SocdSettings {
+    let cleaned = config.sanitised();
+    socd::apply(&cleaned);
+
+    let mut settings = settings::load(&app);
+    settings.socd = cleaned.clone();
+    let _ = settings::save(&app, &settings);
+
+    cleaned
+}
+
 /// Factory settings for one macro, as plain JSON.
 ///
 /// One command for all of them, rather than five that each return their own
@@ -654,8 +712,28 @@ fn window_minimize(window: WebviewWindow) {
 }
 
 #[tauri::command]
-fn window_close(window: WebviewWindow) {
-    let _ = window.hide();
+fn window_close(app: AppHandle, window: WebviewWindow) {
+    if settings::load(&app).close_to_tray {
+        let _ = window.hide();
+        return;
+    }
+    shut_down(&app);
+}
+
+/// Stop the working threads, then end the process.
+///
+/// The threads are asked to stop first because they are the ones holding a
+/// mouse button or a key down. Exiting underneath them can leave a button
+/// stuck down with nothing left running to release it.
+fn shut_down(app: &AppHandle) {
+    if let Some(state) = app.try_state::<AppState>() {
+        state.clickers.shutdown();
+        state.automator.shutdown();
+    }
+    // Takes the hook down and lets go of anything it was holding, so no key
+    // is left stuck once there is nothing running to release it.
+    socd::shutdown();
+    app.exit(0);
 }
 
 fn restore_window(app: &AppHandle) {
@@ -676,14 +754,7 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         .menu(&menu)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => restore_window(app),
-            "quit" => {
-
-                if let Some(state) = app.try_state::<AppState>() {
-                    state.clickers.shutdown();
-                    state.automator.shutdown();
-                }
-                app.exit(0);
-            }
+            "quit" => shut_down(app),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
@@ -775,9 +846,17 @@ pub fn run() {
                 return;
             }
 
+            // Alt+F4 and the taskbar's Close both arrive here, so they follow
+            // the same setting as the button in the title bar.
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+                let app = window.app_handle();
+                if settings::load(app).close_to_tray {
+                    api.prevent_close();
+                    let _ = window.hide();
+                } else {
+                    api.prevent_close();
+                    shut_down(app);
+                }
                 return;
             }
 
@@ -861,12 +940,20 @@ pub fn run() {
             // bring the overlay up if it was left switched on
             overlay::apply(&handle, &initial.overlay);
 
+            // and put the SOCD hook back if it was left on
+            socd::apply(&initial.socd);
+
             match app.get_webview_window("main") {
                 Some(window) => {
 
                     let _ = window.set_decorations(false);
 
-                    let _ = window.set_title("");
+                    // The title is never drawn -- the caption is gone and the
+                    // bar across the top is ours. It is still what Windows
+                    // labels the taskbar button, Alt+Tab and the thumbnail
+                    // preview with, so blanking it leaves the app nameless
+                    // everywhere outside its own window.
+                    let _ = window.set_title("Syntax");
                     let _ = window.set_always_on_top(initial.always_on_top);
                     decorate_window(&window, &initial, light);
                 }
@@ -912,6 +999,13 @@ pub fn run() {
             apply_crossbow,
             get_crossbow_status,
             macro_defaults,
+            get_movement,
+            apply_movement,
+            get_movement_state,
+            write_movement,
+            clear_movement,
+            get_socd,
+            apply_socd,
             fire_crossbow,
             get_overlay,
             apply_overlay,

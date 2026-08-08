@@ -10,6 +10,19 @@ use crate::win32;
 /// X, which is what this holds unless you change it.
 const DEFAULT_HOLD_VK: u32 = 0x58;
 
+/// A delay, kept sane and kept fractional.
+///
+/// These are held as fractions rather than whole milliseconds so the speed
+/// control can scale them and scale them back without drift. Halving 7 gives
+/// 3.5, not 4, so doubling it returns the 7 you started with. Only the wait
+/// itself rounds, and it rounds once, at the end.
+fn clamp_ms(value: f64, cap: f64) -> f64 {
+    if !value.is_finite() || value < 0.0 {
+        return 0.0;
+    }
+    value.min(cap)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct DaveySettings {
@@ -22,7 +35,7 @@ pub struct DaveySettings {
     pub hold_ms: u64,
     pub pickaxe_slot: u32,
     /// How long the slot number is held.
-    pub key_hold_ms: u64,
+    pub key_hold_ms: f64,
     /// How fast to click once the key is released.
     pub burst_cps: f64,
     /// How long to keep clicking for.
@@ -32,6 +45,11 @@ pub struct DaveySettings {
     /// between two of its frames, so this keeps it down long enough to be
     /// seen.
     pub burst_duty: f64,
+    /// Where the speed control was left, so it reads right next time.
+    ///
+    /// Nothing here uses it. Moving it rewrites the delays above directly, so
+    /// they are already the real numbers by the time they arrive.
+    pub speed: f64,
 }
 
 impl Default for DaveySettings {
@@ -41,11 +59,12 @@ impl Default for DaveySettings {
             bind_vk: 0,
             hold_vk: DEFAULT_HOLD_VK,
             hold_ms: 417,
-            pickaxe_slot: 2,
-            key_hold_ms: 12,
+            pickaxe_slot: 4,
+            key_hold_ms: 12.0,
             burst_cps: 250.0,
             burst_ms: 500,
             burst_duty: 50.0,
+            speed: 1.0,
         }
     }
 }
@@ -57,7 +76,7 @@ impl DaveySettings {
         }
         self.hold_ms = self.hold_ms.min(10_000);
         self.pickaxe_slot = self.pickaxe_slot.clamp(1, 9);
-        self.key_hold_ms = self.key_hold_ms.min(2_000);
+        self.key_hold_ms = clamp_ms(self.key_hold_ms, 2000.0);
         if !self.burst_cps.is_finite() {
             self.burst_cps = 250.0;
         }
@@ -67,6 +86,10 @@ impl DaveySettings {
             self.burst_duty = 50.0;
         }
         self.burst_duty = self.burst_duty.clamp(5.0, 95.0);
+        if !self.speed.is_finite() || self.speed <= 0.0 {
+            self.speed = 1.0;
+        }
+        self.speed = self.speed.clamp(0.1, 10.0);
         self
     }
 }
@@ -144,12 +167,12 @@ impl Davey {
 
 /// Windows overshoots a short sleep by a whole timer tick, which at these
 /// lengths is most of the delay. Spin for the short ones.
-fn wait(ms: u64) {
-    if ms == 0 {
+fn wait(ms: f64) {
+    if !(ms > 0.0) {
         return;
     }
 
-    let span = Duration::from_millis(ms);
+    let span = Duration::from_secs_f64(ms / 1000.0);
     if span < Duration::from_micros(1500) {
         let until = Instant::now() + span;
         while Instant::now() < until {
@@ -160,8 +183,8 @@ fn wait(ms: u64) {
     }
 }
 
-fn tap(vk: u16, hold: u64) {
-    if hold == 0 {
+fn tap(vk: u16, hold: f64) {
+    if hold <= 0.0 {
         win32::send_inputs(&[win32::key_event(vk, false), win32::key_event(vk, true)]);
         return;
     }
@@ -179,7 +202,7 @@ fn slot_key(slot: u32) -> u16 {
 fn hold_until(from: Instant, ms: u64) {
     let mark = Duration::from_millis(ms);
     if let Some(left) = mark.checked_sub(from.elapsed()) {
-        wait(left.as_millis() as u64);
+        wait(left.as_secs_f64() * 1000.0);
     }
 }
 

@@ -85,6 +85,10 @@
             <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.4 3.6 7.8 12 12.2l8.4-4.4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.6 12.2 12 16.6l8.4-4.4M3.6 16.4 12 20.8l8.4-4.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span>Macros</span>
           </button>
+          <button class="nav-item" data-tab="movement" type="button">
+            <svg viewBox="0 0 24 24" fill="none"><rect x="2.6" y="6.2" width="18.8" height="11.6" rx="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+            <span>Movement</span>
+          </button>
           <button class="nav-item" data-tab="optimize" type="button">
             <svg viewBox="0 0 24 24" fill="none"><path d="M13.4 2.6 4.2 13.4h6.1l-.7 8 9.2-10.8h-6.1z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
             <span>Optimize</span>
@@ -902,11 +906,16 @@
               <div class="card">
                 <label class="field-label">Timing</label>
                 <p class="hint tight">
-                  All in milliseconds. Zero sends the press and release together, which
-                  is as fast as Windows allows — drop each one until the game stops
-                  keeping up, then go back a step.
+                  All in milliseconds, apart from <b>overall speed</b> — that one changes
+                  every other field at once, lower for bigger delays. Zero sends the press
+                  and release together, which is as fast as Windows allows — drop each one
+                  until the game stops keeping up, then go back a step.
                 </p>
                 <div class="search-grid">
+                  <span class="value-tag">
+                    Overall speed
+                    <input type="number" id="dropSpeed" class="tag-input" min="0.1" max="10" step="0.1" />
+                  </span>
                   <span class="value-tag">
                     Holding a slot key
                     <input type="number" id="dropKeyHold" class="tag-input" min="0" max="2000" step="1" />
@@ -990,6 +999,21 @@
                     <input type="checkbox" id="skyRestore" checked />
                     <span class="track"></span>
                   </label>
+                </div>
+              </div>
+
+              <div class="card">
+                <label class="field-label">Overall speed</label>
+                <p class="hint tight">
+                  Changes every delay below at once. Lower it and they all get bigger;
+                  raise it and they all shrink. The numbers themselves change, so what
+                  you see in the fields is always what actually runs.
+                </p>
+                <div class="search-grid">
+                  <span class="value-tag">
+                    Speed
+                    <input type="number" id="skySpeed" class="tag-input" min="0.1" max="10" step="0.1" />
+                  </span>
                 </div>
               </div>
 
@@ -1108,6 +1132,10 @@
                 </p>
                 <div class="search-grid">
                   <span class="value-tag">
+                    Overall speed
+                    <input type="number" id="dvySpeed" class="tag-input" min="0.1" max="10" step="0.1" />
+                  </span>
+                  <span class="value-tag">
                     Total time held
                     <input type="number" id="dvyHoldMs" class="tag-input" min="0" max="10000" step="1" />
                   </span>
@@ -1128,6 +1156,14 @@
                     <input type="number" id="dvyBurstDuty" class="tag-input" min="5" max="95" step="5" />
                   </span>
                 </div>
+                <p class="hint">
+                  <b>Overall speed</b> rewrites the slot-key hold, and nothing else. It
+                  leaves <b>total time held</b> alone — that one is the launch itself,
+                  measured against the game rather than chosen, and shortening it puts
+                  the click before the window it has to land in. <b>Clicking for</b> and
+                  <b>clicks per second</b> stay put too: one is how long you keep
+                  clicking, the other is already a speed.
+                </p>
               </div>
 
               <div class="card">
@@ -1236,10 +1272,16 @@
               <div class="card">
                 <label class="field-label">Timing</label>
                 <p class="hint tight">
-                  Milliseconds. The game reads the mouse once a frame, so the shot has to
-                  be held longer than a frame to register — raise it if shots are missed.
+                  Milliseconds, apart from <b>overall speed</b> — that one changes every
+                  other field at once, lower for bigger delays. The game reads the mouse
+                  once a frame, so the shot has to be held longer than a frame to
+                  register; raise it if shots are missed.
                 </p>
                 <div class="search-grid">
+                  <span class="value-tag">
+                    Overall speed
+                    <input type="number" id="bowSpeed" class="tag-input" min="0.1" max="10" step="0.1" />
+                  </span>
                   <span class="value-tag">
                     Holding the slot key
                     <input type="number" id="bowKeyHold" class="tag-input" min="0" max="2000" step="1" />
@@ -1272,6 +1314,97 @@
                   <button class="ghost-btn" data-reset="crossbow" type="button">Reset</button>
                 </div>
               </div>
+            </div>
+          </section>
+
+          <section class="panel panel-grid" data-panel="movement">
+            <div class="panel-head">
+              <h1>Movement</h1>
+              <p>Permanent key changes, written into Windows itself.</p>
+            </div>
+
+            <div class="card span-2">
+              <div class="row-between">
+                <div>
+                  <label class="field-label" id="kbTitle">Key rebinding</label>
+                  <p class="hint tight" id="kbBlurb"></p>
+                </div>
+                <span class="value-tag"><span id="rebindCount">0</span> set</span>
+              </div>
+
+              <div class="segmented wide" id="kbModeGroup" style="margin-top: 11px">
+                <button data-value="rebind" class="seg active" type="button">Rebinding</button>
+                <button data-value="socd" class="seg" type="button">SOCD</button>
+              </div>
+
+              <div class="keyboard" id="keyboard"></div>
+
+              <div class="row-between" style="margin-top: 12px">
+                <p class="hint tight" id="rebindPrompt"></p>
+                <div class="chip-row" id="rebindTools">
+                  <button class="chip" id="btnRebindOff" type="button">Disable key</button>
+                  <button class="chip" id="btnRebindRemove" type="button">Remove</button>
+                  <button class="ghost-btn" id="btnRebindReset" type="button">Reset to default</button>
+                </div>
+                <div class="chip-row" id="socdTools">
+                  <button class="chip" id="btnSocdAddGroup" type="button">New group</button>
+                  <button class="ghost-btn" id="btnSocdReset" type="button">Reset to default</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card span-2" id="socdCard">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Last key wins</label>
+                  <p class="hint tight">
+                    Within a group, the key you pressed most recently is the one that
+                    counts. Let it go and whatever is still held takes over, without
+                    re-pressing anything.
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="socdEnabled" />
+                  <span class="track"></span>
+                </label>
+              </div>
+
+              <div class="preset-list" id="socdGroups"></div>
+
+              <p class="hint">
+                Keys only cancel others in their own group, which is why A/D and W/S are
+                separate — one group of all four would mean pressing W cancelled A, and
+                you could never move diagonally. A group can hold as many keys as you
+                like.
+                <br /><br />
+                <b>This one needs Syntax running.</b> Deciding what a keypress means has
+                to happen as you press it, so unlike rebinding it cannot be written into
+                Windows. Closing to the tray is fine; quitting stops it.
+              </p>
+            </div>
+
+            <div class="card span-2">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Apply to Windows</label>
+                  <p class="hint tight" id="rebindStatus">—</p>
+                </div>
+                <div class="chip-row">
+                  <button class="chip" id="btnRebindWrite" type="button">Apply</button>
+                  <button class="chip" id="btnRebindClear" type="button">Remove all</button>
+                </div>
+              </div>
+              <p class="hint">
+                Both ask for administrator permission, and <b>neither takes effect until
+                you restart the computer</b> — Windows reads this table once while
+                booting and nothing can make it read it again sooner.
+                <br /><br />
+                <b>Read this before applying.</b> These changes sit underneath everything,
+                including the login screen. If you rebind a key you need to type your
+                password, you will find out at the worst moment. <b>Remove all</b> undoes
+                everything here and only needs a mouse — but it needs a restart too, so
+                keep another way into your machine in mind.
+              </p>
             </div>
           </section>
 
@@ -1628,6 +1761,20 @@
                   <span class="track"></span>
                 </label>
               </div>
+            </div>
+
+            <div class="card">
+              <div class="row-between">
+                <div>
+                  <label class="field-label">Keep running when closed</label>
+                  <p class="hint tight">Closing hides Syntax to the tray instead of quitting.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="closeToTray" checked />
+                  <span class="track"></span>
+                </label>
+              </div>
+              <p class="hint" id="closeHint"></p>
             </div>
 
             <div class="card">

@@ -74,6 +74,7 @@ interface Settings {
   alwaysOnTop: boolean;
   blurEnabled: boolean;
   acrylic: boolean;
+  closeToTray: boolean;
   opacity: number;
   presets: Preset[];
 }
@@ -408,6 +409,7 @@ interface Gumdrop {
   placeWaitMs: number;
   afterPickaxeMs: number;
   afterBreakMs: number;
+  speed: number;
 }
 
 interface GumdropStatus {
@@ -424,6 +426,7 @@ interface Skywars {
   clicksPerItem: number;
   retryGapMs: number;
   restoreCursor: boolean;
+  speed: number;
 }
 
 interface Davey {
@@ -436,6 +439,7 @@ interface Davey {
   burstCps: number;
   burstMs: number;
   burstDuty: number;
+  speed: number;
 }
 
 interface Overlay {
@@ -459,6 +463,7 @@ interface Crossbow {
   afterSwitchMs: number;
   clickHoldMs: number;
   afterClickMs: number;
+  speed: number;
 }
 
 interface CrossbowStatus {
@@ -636,6 +641,28 @@ const accentSatValue = el<HTMLInputElement>("accentSatInput");
 const themeGroup = el<HTMLDivElement>("themeGroup");
 const themeHint = el<HTMLParagraphElement>("themeHint");
 const blurToggle = el<HTMLInputElement>("blurEnabled");
+const keyboard = el<HTMLDivElement>("keyboard");
+const kbModeGroup = el<HTMLDivElement>("kbModeGroup");
+const kbTitle = el<HTMLLabelElement>("kbTitle");
+const kbBlurb = el<HTMLParagraphElement>("kbBlurb");
+const rebindTools = el<HTMLDivElement>("rebindTools");
+const socdTools = el<HTMLDivElement>("socdTools");
+const socdCard = el<HTMLDivElement>("socdCard");
+const socdGroups = el<HTMLDivElement>("socdGroups");
+const socdToggle = el<HTMLInputElement>("socdEnabled");
+const socdAddBtn = el<HTMLButtonElement>("btnSocdAddGroup");
+const socdResetBtn = el<HTMLButtonElement>("btnSocdReset");
+const rebindCount = el<HTMLSpanElement>("rebindCount");
+const rebindPrompt = el<HTMLParagraphElement>("rebindPrompt");
+const rebindStatus = el<HTMLParagraphElement>("rebindStatus");
+const rebindOffBtn = el<HTMLButtonElement>("btnRebindOff");
+const rebindRemoveBtn = el<HTMLButtonElement>("btnRebindRemove");
+const rebindResetBtn = el<HTMLButtonElement>("btnRebindReset");
+const rebindWriteBtn = el<HTMLButtonElement>("btnRebindWrite");
+const rebindClearBtn = el<HTMLButtonElement>("btnRebindClear");
+
+const closeToTrayToggle = el<HTMLInputElement>("closeToTray");
+const closeHint = el<HTMLParagraphElement>("closeHint");
 const acrylicToggle = el<HTMLInputElement>("acrylic");
 const opacitySlider = el<HTMLInputElement>("opacity");
 const opacityValue = el<HTMLSpanElement>("opacityValue");
@@ -675,6 +702,7 @@ const dropKeyHold = el<HTMLInputElement>("dropKeyHold");
 const dropAfterGum = el<HTMLInputElement>("dropAfterGum");
 const dropAfterPick = el<HTMLInputElement>("dropAfterPick");
 const dropAfterBreak = el<HTMLInputElement>("dropAfterBreak");
+const dropSpeed = el<HTMLInputElement>("dropSpeed");
 const dropClickHold = el<HTMLInputElement>("dropClickHold");
 const dropWait = el<HTMLInputElement>("dropWait");
 const dropTotal = el<HTMLParagraphElement>("dropTotal");
@@ -701,6 +729,7 @@ const dvyKeyHold = el<HTMLInputElement>("dvyKeyHold");
 const dvyBurstMs = el<HTMLInputElement>("dvyBurstMs");
 const dvyBurstCps = el<HTMLInputElement>("dvyBurstCps");
 const dvyBurstDuty = el<HTMLInputElement>("dvyBurstDuty");
+const dvySpeed = el<HTMLInputElement>("dvySpeed");
 const dvyRuns = el<HTMLElement>("dvyRuns");
 const dvyRunBtn = el<HTMLButtonElement>("btnDvyRun");
 
@@ -717,6 +746,7 @@ const bowTactical = el<HTMLInputElement>("bowTactical");
 const bowTacticalWrap = el<HTMLDivElement>("bowTacticalWrap");
 const bowTacticalSlot = el<HTMLInputElement>("bowTacticalSlot");
 const bowSecondSwitch = el<HTMLInputElement>("bowSecondSwitch");
+const bowSpeed = el<HTMLInputElement>("bowSpeed");
 const bowSlot = el<HTMLInputElement>("bowSlot");
 const bowSwordSlot = el<HTMLInputElement>("bowSwordSlot");
 const bowKeyHold = el<HTMLInputElement>("bowKeyHold");
@@ -756,6 +786,7 @@ const skyClickHold = el<HTMLInputElement>("skyClickHold");
 const skyBetween = el<HTMLInputElement>("skyBetween");
 const skyClicks = el<HTMLInputElement>("skyClicks");
 const skyRetryGap = el<HTMLInputElement>("skyRetryGap");
+const skySpeed = el<HTMLInputElement>("skySpeed");
 const skyNote = el<HTMLParagraphElement>("skyNote");
 const skyRunBtn = el<HTMLButtonElement>("btnSkyRun");
 
@@ -1662,6 +1693,22 @@ function renderAppearance(): void {
   opacityValue.textContent = String(Math.round(settings.opacity * 100));
   opacitySlider.value = String(Math.round(settings.opacity * 100));
   paintRange(opacitySlider);
+
+  closeToTrayToggle.checked = settings.closeToTray;
+
+  // The button's own label has to say what it now does, or it is telling
+  // people it hides to the tray while it quits.
+  el<HTMLButtonElement>("btnClose").setAttribute(
+    "aria-label",
+    settings.closeToTray ? "Hide to tray" : "Quit Syntax",
+  );
+
+  text(
+    closeHint,
+    settings.closeToTray
+      ? "Your hotkeys keep working while it's hidden. Right-click the tray icon to quit, or turn this off to have closing quit instead."
+      : "Closing quits Syntax outright, so nothing is left in the tray and no hotkey will respond until you open it again.",
+  );
 }
 
 function renderTimeLimit(): void {
@@ -2393,8 +2440,8 @@ function buildStepFields(step: Step, index: number): HTMLDivElement {
       pick.textContent = picking ? "Click anywhere…" : "Pick";
       pick.addEventListener("click", () => {
         if (capturing) {
-          void invoke("cancel_capture");
-          endCapture();
+          // Already listening. Do nothing at all, so this click reaches
+          // the capture and can be bound like any other button.
           return;
         }
         beginCapture({ kind: "position", index });
@@ -2433,8 +2480,8 @@ function buildStepFields(step: Step, index: number): HTMLDivElement {
       }</span>`;
       cap.addEventListener("click", () => {
         if (capturing) {
-          void invoke("cancel_capture");
-          endCapture();
+          // Already listening. Do nothing at all, so this click reaches
+          // the capture and can be bound like any other button.
           return;
         }
         beginCapture({ kind: "stepKey", index });
@@ -2715,8 +2762,8 @@ function wireFisher(): void {
 
   fisherBindBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     beginCapture({ kind: "fisherBind" });
@@ -2735,12 +2782,13 @@ function renderGumdrop(): void {
   dropGumSlot.value = String(gumdrop.gumdropSlot);
   dropPickSlot.value = String(gumdrop.pickaxeSlot);
   dropSwordSlot.value = String(gumdrop.swordSlot);
-  dropKeyHold.value = String(gumdrop.keyHoldMs);
-  dropAfterGum.value = String(gumdrop.afterGumdropMs);
-  dropAfterPick.value = String(gumdrop.afterPickaxeMs);
-  dropAfterBreak.value = String(gumdrop.afterBreakMs);
-  dropClickHold.value = String(gumdrop.clickHoldMs);
-  dropWait.value = String(gumdrop.placeWaitMs);
+  dropKeyHold.value = trimNum(gumdrop.keyHoldMs);
+  dropAfterGum.value = trimNum(gumdrop.afterGumdropMs);
+  dropAfterPick.value = trimNum(gumdrop.afterPickaxeMs);
+  dropAfterBreak.value = trimNum(gumdrop.afterBreakMs);
+  dropSpeed.value = trimNum(gumdrop.speed);
+  dropClickHold.value = trimNum(gumdrop.clickHoldMs);
+  dropWait.value = trimNum(gumdrop.placeWaitMs);
 
   const total =
     gumdrop.keyHoldMs * 3 +
@@ -2787,8 +2835,8 @@ function wireGumdrop(): void {
 
   dropBindBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     beginCapture({ kind: "dropBind" });
@@ -2798,7 +2846,6 @@ function wireGumdrop(): void {
     input.addEventListener("change", () => {
       apply(Math.min(9, Math.max(1, Math.round(Number(input.value) || 1))));
       renderGumdrop();
-  renderSkywars();
       pushGumdrop();
     });
   };
@@ -2809,9 +2856,10 @@ function wireGumdrop(): void {
 
   const timing = (input: HTMLInputElement, cap: number, apply: (value: number) => void) => {
     input.addEventListener("change", () => {
-      apply(Math.min(cap, Math.max(0, Math.round(Number(input.value) || 0))));
+      // no rounding: a delay may legitimately be 3.5 ms once the speed
+      // control has been near it
+      apply(Math.min(cap, Math.max(0, Number(input.value) || 0)));
       renderGumdrop();
-  renderSkywars();
       pushGumdrop();
     });
   };
@@ -2822,6 +2870,22 @@ function wireGumdrop(): void {
   timing(dropAfterBreak, 5000, (v) => (gumdrop.afterBreakMs = v));
   timing(dropClickHold, 2000, (v) => (gumdrop.clickHoldMs = v));
   timing(dropWait, 5000, (v) => (gumdrop.placeWaitMs = v));
+
+  dropSpeed.addEventListener("change", () => {
+    const next = Math.min(10, Math.max(0.1, Number(dropSpeed.value) || 1));
+    const factor = gumdrop.speed / next;
+    gumdrop.speed = next;
+
+    gumdrop.keyHoldMs = stretch(gumdrop.keyHoldMs, factor);
+    gumdrop.clickHoldMs = stretch(gumdrop.clickHoldMs, factor);
+    gumdrop.afterGumdropMs = stretch(gumdrop.afterGumdropMs, factor);
+    gumdrop.placeWaitMs = stretch(gumdrop.placeWaitMs, factor);
+    gumdrop.afterPickaxeMs = stretch(gumdrop.afterPickaxeMs, factor);
+    gumdrop.afterBreakMs = stretch(gumdrop.afterBreakMs, factor);
+
+    renderGumdrop();
+    pushGumdrop();
+  });
 }
 
 function pushSkywars(): void {
@@ -2832,11 +2896,12 @@ function pushSkywars(): void {
 }
 
 function renderSkywars(): void {
-  skySettle.value = String(skywars.settleMs);
-  skyClickHold.value = String(skywars.clickHoldMs);
-  skyBetween.value = String(skywars.betweenMs);
+  skySettle.value = trimNum(skywars.settleMs);
+  skyClickHold.value = trimNum(skywars.clickHoldMs);
+  skyBetween.value = trimNum(skywars.betweenMs);
   skyClicks.value = String(skywars.clicksPerItem);
-  skyRetryGap.value = String(skywars.retryGapMs);
+  skyRetryGap.value = trimNum(skywars.retryGapMs);
+  skySpeed.value = trimNum(skywars.speed);
   skyRestore.checked = skywars.restoreCursor;
 
   skyBindToggle.checked = skywars.bindEnabled;
@@ -2861,10 +2926,11 @@ function pushDavey(): void {
 function renderDavey(): void {
   dvyPickSlot.value = String(davey.pickaxeSlot);
   dvyHoldMs.value = String(davey.holdMs);
-  dvyKeyHold.value = String(davey.keyHoldMs);
+  dvyKeyHold.value = trimNum(davey.keyHoldMs);
   dvyBurstMs.value = String(davey.burstMs);
   dvyBurstCps.value = String(davey.burstCps);
   dvyBurstDuty.value = String(davey.burstDuty);
+  dvySpeed.value = trimNum(davey.speed);
 
   text(dvyHoldLabel, vkLabel(davey.holdVk));
 
@@ -2904,8 +2970,8 @@ function wireDavey(): void {
   const rebind = (button: HTMLButtonElement, target: CaptureTarget) => {
     button.addEventListener("click", () => {
       if (capturing) {
-        void invoke("cancel_capture");
-        endCapture();
+        // Already listening. Do nothing at all, so this click reaches
+        // the capture and can be bound like any other button.
         return;
       }
       beginCapture(target);
@@ -2930,10 +2996,638 @@ function wireDavey(): void {
 
   number(dvyPickSlot, 1, 9, (v) => (davey.pickaxeSlot = v));
   number(dvyHoldMs, 0, 10000, (v) => (davey.holdMs = v));
-  number(dvyKeyHold, 0, 2000, (v) => (davey.keyHoldMs = v));
+  // The one Davey delay the speed control touches, so it may hold a fraction.
+  dvyKeyHold.addEventListener("change", () => {
+    davey.keyHoldMs = Math.min(2000, Math.max(0, Number(dvyKeyHold.value) || 0));
+    renderDavey();
+    pushDavey();
+  });
   number(dvyBurstMs, 0, 10000, (v) => (davey.burstMs = v));
   number(dvyBurstCps, 1, 50000, (v) => (davey.burstCps = v));
   number(dvyBurstDuty, 5, 95, (v) => (davey.burstDuty = v));
+
+  dvySpeed.addEventListener("change", () => {
+    const next = Math.min(10, Math.max(0.1, Number(dvySpeed.value) || 1));
+    const factor = davey.speed / next;
+    davey.speed = next;
+
+    // Only this one. The hold is the launch, which is a fact about the game
+    // rather than a delay to trim.
+    davey.keyHoldMs = stretch(davey.keyHoldMs, factor);
+
+    renderDavey();
+    pushDavey();
+  });
+}
+
+interface Rebind {
+  fromVk: number;
+  toVk: number;
+}
+
+/**
+ * A full-size keyboard, as rows of keys and gaps.
+ *
+ * `w` is the key's width in units, the way keycaps are actually sized — 1 for
+ * a letter, 6.25 for a spacebar. One number drives the whole drawing, so the
+ * layout scales by changing the unit rather than every key.
+ *
+ * A `vk` of 0 is empty space rather than a key.
+ */
+type Cap = { vk: number; label: string; w?: number };
+
+const KB_GAP = (w: number): Cap => ({ vk: 0, label: "", w });
+
+const KEYBOARD: Cap[][] = [
+  [
+    { vk: 0x1b, label: "Esc" },
+    KB_GAP(1),
+    { vk: 0x70, label: "F1" },
+    { vk: 0x71, label: "F2" },
+    { vk: 0x72, label: "F3" },
+    { vk: 0x73, label: "F4" },
+    KB_GAP(0.5),
+    { vk: 0x74, label: "F5" },
+    { vk: 0x75, label: "F6" },
+    { vk: 0x76, label: "F7" },
+    { vk: 0x77, label: "F8" },
+    KB_GAP(0.5),
+    { vk: 0x78, label: "F9" },
+    { vk: 0x79, label: "F10" },
+    { vk: 0x7a, label: "F11" },
+    { vk: 0x7b, label: "F12" },
+    KB_GAP(0.5),
+    { vk: 0x2c, label: "PrtSc" },
+    { vk: 0x91, label: "ScrLk" },
+    { vk: 0x13, label: "Pause" },
+  ],
+  [
+    { vk: 0xc0, label: "`" },
+    { vk: 0x31, label: "1" },
+    { vk: 0x32, label: "2" },
+    { vk: 0x33, label: "3" },
+    { vk: 0x34, label: "4" },
+    { vk: 0x35, label: "5" },
+    { vk: 0x36, label: "6" },
+    { vk: 0x37, label: "7" },
+    { vk: 0x38, label: "8" },
+    { vk: 0x39, label: "9" },
+    { vk: 0x30, label: "0" },
+    { vk: 0xbd, label: "-" },
+    { vk: 0xbb, label: "=" },
+    { vk: 0x08, label: "Bksp", w: 2 },
+    KB_GAP(0.5),
+    { vk: 0x2d, label: "Ins" },
+    { vk: 0x24, label: "Home" },
+    { vk: 0x21, label: "PgUp" },
+    KB_GAP(0.5),
+    { vk: 0x90, label: "NumLk" },
+    { vk: 0x6f, label: "/" },
+    { vk: 0x6a, label: "*" },
+    { vk: 0x6d, label: "-" },
+  ],
+  [
+    { vk: 0x09, label: "Tab", w: 1.5 },
+    { vk: 0x51, label: "Q" },
+    { vk: 0x57, label: "W" },
+    { vk: 0x45, label: "E" },
+    { vk: 0x52, label: "R" },
+    { vk: 0x54, label: "T" },
+    { vk: 0x59, label: "Y" },
+    { vk: 0x55, label: "U" },
+    { vk: 0x49, label: "I" },
+    { vk: 0x4f, label: "O" },
+    { vk: 0x50, label: "P" },
+    { vk: 0xdb, label: "[" },
+    { vk: 0xdd, label: "]" },
+    { vk: 0xdc, label: "\\", w: 1.5 },
+    KB_GAP(0.5),
+    { vk: 0x2e, label: "Del" },
+    { vk: 0x23, label: "End" },
+    { vk: 0x22, label: "PgDn" },
+    KB_GAP(0.5),
+    { vk: 0x67, label: "7" },
+    { vk: 0x68, label: "8" },
+    { vk: 0x69, label: "9" },
+    { vk: 0x6b, label: "+" },
+  ],
+  [
+    { vk: 0x14, label: "Caps", w: 1.75 },
+    { vk: 0x41, label: "A" },
+    { vk: 0x53, label: "S" },
+    { vk: 0x44, label: "D" },
+    { vk: 0x46, label: "F" },
+    { vk: 0x47, label: "G" },
+    { vk: 0x48, label: "H" },
+    { vk: 0x4a, label: "J" },
+    { vk: 0x4b, label: "K" },
+    { vk: 0x4c, label: "L" },
+    { vk: 0xba, label: ";" },
+    { vk: 0xde, label: "'" },
+    { vk: 0x0d, label: "Enter", w: 2.25 },
+    // 4 units: the half-gap, the three-wide nav block this row has no keys
+    // in, and the half-gap after it. Anything else and the numpad slides.
+    KB_GAP(4),
+    { vk: 0x64, label: "4" },
+    { vk: 0x65, label: "5" },
+    { vk: 0x66, label: "6" },
+  ],
+  [
+    { vk: 0xa0, label: "Shift", w: 2.25 },
+    { vk: 0x5a, label: "Z" },
+    { vk: 0x58, label: "X" },
+    { vk: 0x43, label: "C" },
+    { vk: 0x56, label: "V" },
+    { vk: 0x42, label: "B" },
+    { vk: 0x4e, label: "N" },
+    { vk: 0x4d, label: "M" },
+    { vk: 0xbc, label: "," },
+    { vk: 0xbe, label: "." },
+    { vk: 0xbf, label: "/" },
+    { vk: 0xa1, label: "Shift", w: 2.75 },
+    KB_GAP(1.5),
+    { vk: 0x26, label: "↑" },
+    KB_GAP(1.5),
+    { vk: 0x61, label: "1" },
+    { vk: 0x62, label: "2" },
+    { vk: 0x63, label: "3" },
+  ],
+  [
+    { vk: 0xa2, label: "Ctrl", w: 1.25 },
+    { vk: 0x5b, label: "Win", w: 1.25 },
+    { vk: 0xa4, label: "Alt", w: 1.25 },
+    { vk: 0x20, label: "Space", w: 6.25 },
+    { vk: 0xa5, label: "Alt", w: 1.25 },
+    { vk: 0x5c, label: "Win", w: 1.25 },
+    { vk: 0x5d, label: "Menu", w: 1.25 },
+    { vk: 0xa3, label: "Ctrl", w: 1.25 },
+    KB_GAP(0.5),
+    { vk: 0x25, label: "←" },
+    { vk: 0x28, label: "↓" },
+    { vk: 0x27, label: "→" },
+    KB_GAP(0.5),
+    { vk: 0x60, label: "0", w: 2 },
+    { vk: 0x6e, label: "." },
+  ],
+];
+
+/** Short name for a key, taken from the drawing so the two never disagree. */
+function capLabel(vk: number): string {
+  for (const row of KEYBOARD) {
+    for (const cap of row) {
+      if (cap.vk === vk) return cap.label;
+    }
+  }
+  return vkLabel(vk);
+}
+
+/** The key waiting to be given a new meaning, if any. */
+let picking: number | null = null;
+
+interface Socd {
+  enabled: boolean;
+  groups: number[][];
+}
+
+let socd: Socd = { enabled: false, groups: [] };
+
+/** Which of the two things clicking a key does. */
+let kbMode: "rebind" | "socd" = "rebind";
+
+/** The group new keys join, while editing SOCD. */
+let socdGroup = 0;
+
+function pushSocd(): void {
+  void invoke<Socd>("apply_socd", { config: socd })
+    .then((saved) => {
+      socd = saved;
+      if (socdGroup >= socd.groups.length) socdGroup = Math.max(0, socd.groups.length - 1);
+      renderMovement();
+    })
+    .catch(() => {});
+}
+
+/** Which group a key belongs to, or -1. */
+function groupOf(vk: number): number {
+  return socd.groups.findIndex((group) => group.includes(vk));
+}
+
+/** Add a key to the group being edited, or take it out of whichever it's in. */
+function toggleInGroup(vk: number): void {
+  const at = groupOf(vk);
+
+  if (at !== -1) {
+    socd.groups[at] = socd.groups[at]!.filter((key) => key !== vk);
+  } else {
+    if (socd.groups.length === 0) socd.groups.push([]);
+    const target = Math.min(socdGroup, socd.groups.length - 1);
+    socd.groups[target]!.push(vk);
+  }
+
+  renderMovement();
+  pushSocd();
+}
+
+interface MovementSettings {
+  rebinds: Rebind[];
+}
+
+interface MapState {
+  live: Rebind[];
+  matches: boolean;
+}
+
+let movement: MovementSettings = { rebinds: [] };
+
+function pushMovement(): void {
+  void invoke<MovementSettings>("apply_movement", { config: movement })
+    .then((saved) => {
+      movement = saved;
+      renderMovement();
+      void refreshMapState();
+    })
+    .catch(() => {});
+}
+
+/**
+ * Read the registry back and say what is actually written there.
+ *
+ * Carefully not "what Windows is applying" — nothing can tell us that. The
+ * map only comes into force at boot, and there is no way to ask whether the
+ * running keyboard driver picked it up. Written and in force are two
+ * different things, and saying so is the difference between a status line
+ * that helps and one that lies.
+ */
+async function refreshMapState(): Promise<MapState | null> {
+  try {
+    const state = await invoke<MapState>("get_movement_state");
+    const live = state.live.length;
+    const count = live === 1 ? "1 rebind" : `${live} rebinds`;
+
+    if (movement.rebinds.length === 0 && live === 0) {
+      text(rebindStatus, "Nothing is rebound.");
+    } else if (state.matches) {
+      text(
+        rebindStatus,
+        `${count} written into Windows, matching the list above. Takes effect after a restart.`,
+      );
+    } else if (live === 0) {
+      text(rebindStatus, "Not written into Windows yet — press Apply.");
+    } else {
+      text(
+        rebindStatus,
+        `${count} written into Windows, but not what's above. Press Apply to match.`,
+      );
+    }
+
+    return state;
+  } catch {
+    text(rebindStatus, "Couldn't read the current rebinds.");
+    return null;
+  }
+}
+
+/**
+ * Watch for the elevated write to land.
+ *
+ * The elevated shell is fired and forgotten — Windows hands it to another
+ * process and tells us nothing about how it went. So rather than claim
+ * success the moment the prompt appears, watch the registry until it changes
+ * or enough time passes to call it a failure. A silent nothing is the one
+ * outcome worth ruling out.
+ */
+async function awaitMapChange(want: (state: MapState) => boolean): Promise<boolean> {
+  for (let tries = 0; tries < 20; tries += 1) {
+    await new Promise((done) => window.setTimeout(done, 250));
+    const state = await refreshMapState();
+    if (state && want(state)) return true;
+  }
+  return false;
+}
+
+function rebindFor(vk: number): Rebind | undefined {
+  return movement.rebinds.find((r) => r.fromVk === vk);
+}
+
+/** Choose a key, or give the one already chosen a new meaning. */
+function tapKey(vk: number): void {
+  if (picking === null) {
+    picking = vk;
+  } else if (picking === vk) {
+    // the same key twice means "never mind"
+    picking = null;
+  } else {
+    const existing = rebindFor(picking);
+    if (existing) {
+      existing.toVk = vk;
+    } else {
+      movement.rebinds.push({ fromVk: picking, toVk: vk });
+    }
+    picking = null;
+    pushMovement();
+  }
+
+  renderMovement();
+}
+
+function renderMovement(): void {
+  keyboard.replaceChildren();
+  text(rebindCount, String(movement.rebinds.length));
+
+  for (const row of KEYBOARD) {
+    const line = document.createElement("div");
+    line.className = "kb-row";
+
+    for (const cap of row) {
+      if (cap.vk === 0) {
+        const gap = document.createElement("span");
+        gap.className = "kb-space";
+        gap.style.setProperty("--w", String(cap.w ?? 1));
+        line.append(gap);
+        continue;
+      }
+
+      const key = document.createElement("button");
+      key.type = "button";
+      key.className = "kb-key";
+      key.style.setProperty("--w", String(cap.w ?? 1));
+
+      const name = document.createElement("span");
+      name.textContent = cap.label;
+      key.append(name);
+
+      if (kbMode === "rebind") {
+        const mapped = rebindFor(cap.vk);
+        if (mapped) {
+          key.classList.add(mapped.toVk === 0 ? "off" : "mapped");
+          const becomes = document.createElement("span");
+          becomes.className = "kb-becomes";
+          becomes.textContent = mapped.toVk === 0 ? "off" : capLabel(mapped.toVk);
+          key.append(becomes);
+        }
+        if (picking === cap.vk) key.classList.add("picking");
+      } else {
+        const at = groupOf(cap.vk);
+        if (at !== -1) {
+          key.classList.add("mapped");
+          if (at === socdGroup) key.classList.add("picking");
+          const badge = document.createElement("span");
+          badge.className = "kb-becomes";
+          badge.textContent = `G${at + 1}`;
+          key.append(badge);
+        }
+      }
+
+      // No title attribute: Windows draws its own tooltip for one, in its own
+      // styling, and a key that already says what it becomes has nothing left
+      // for it to add.
+      key.addEventListener("click", () =>
+        kbMode === "rebind" ? tapKey(cap.vk) : toggleInGroup(cap.vk),
+      );
+      line.append(key);
+    }
+
+    keyboard.append(line);
+  }
+
+  setSegment(kbModeGroup, kbMode);
+  rebindTools.hidden = kbMode !== "rebind";
+  socdTools.hidden = kbMode !== "socd";
+  socdCard.hidden = kbMode !== "socd";
+
+  if (kbMode === "socd") {
+    renderSocdGroups();
+    text(kbTitle, "SOCD");
+    text(
+      kbBlurb,
+      "Click keys to put them in the highlighted group. Click one again to take it out.",
+    );
+    text(
+      rebindPrompt,
+      socd.groups.length === 0
+        ? "No groups yet. Press New group, then click the keys that should cancel each other."
+        : `Adding to group ${socdGroup + 1}.`,
+    );
+    return;
+  }
+
+  text(kbTitle, "Key rebinding");
+  text(
+    kbBlurb,
+    "Click the key you want to change, then click what it should become. Written into Windows rather than into Syntax, so it works in every game, in every program, and with Syntax closed.",
+  );
+
+  // Plain hidden rather than the collapse animation the cards use — these are
+  // chips in a row, and sliding them would only jitter the layout.
+  const chosen = picking === null ? undefined : rebindFor(picking);
+  rebindOffBtn.hidden = picking === null;
+  rebindRemoveBtn.hidden = chosen === undefined;
+
+  if (picking !== null) {
+    text(rebindPrompt, `Now click what ${capLabel(picking)} should become.`);
+  } else if (movement.rebinds.length === 0) {
+    text(rebindPrompt, "Nothing rebound. Click a key to start.");
+  } else {
+    text(rebindPrompt, "Click a key to change it.");
+  }
+}
+
+function renderSocdGroups(): void {
+  socdToggle.checked = socd.enabled;
+  socdGroups.replaceChildren();
+
+  socd.groups.forEach((group, index) => {
+    const row = document.createElement("div");
+    row.className = "preset";
+
+    const pick = document.createElement("button");
+    pick.className = index === socdGroup ? "chip active" : "chip";
+    pick.type = "button";
+    pick.textContent = `Group ${index + 1}`;
+    pick.addEventListener("click", () => {
+      socdGroup = index;
+      renderMovement();
+    });
+
+    const keys = document.createElement("span");
+    keys.className = "preset-name";
+    keys.textContent =
+      group.length === 0 ? "empty" : group.map(capLabel).join("  ·  ");
+
+    const drop = document.createElement("button");
+    drop.className = "ghost-btn";
+    drop.type = "button";
+    drop.textContent = "Remove";
+    drop.addEventListener("click", () => {
+      socd.groups.splice(index, 1);
+      if (socdGroup >= socd.groups.length) socdGroup = Math.max(0, socd.groups.length - 1);
+      renderMovement();
+      pushSocd();
+    });
+
+    row.append(pick, keys, drop);
+    socdGroups.append(row);
+  });
+}
+
+function wireMovement(): void {
+  kbModeGroup.querySelectorAll<HTMLButtonElement>(".seg").forEach((seg) => {
+    seg.addEventListener("click", () => {
+      kbMode = seg.dataset.value === "socd" ? "socd" : "rebind";
+      // Leaving a half-made rebind behind would have the next visit to this
+      // tab waiting for a key nobody remembers choosing.
+      picking = null;
+      renderMovement();
+    });
+  });
+
+  socdToggle.addEventListener("change", () => {
+    socd.enabled = socdToggle.checked;
+    pushSocd();
+  });
+
+  socdAddBtn.addEventListener("click", () => {
+    socd.groups.push([]);
+    socdGroup = socd.groups.length - 1;
+    renderMovement();
+  });
+
+  socdResetBtn.addEventListener("click", () => {
+    // The two movement axes, which is what almost everyone wants and what
+    // the Rust side calls default too.
+    socd.groups = [
+      [0x41, 0x44],
+      [0x57, 0x53],
+    ];
+    socdGroup = 0;
+    renderMovement();
+    pushSocd();
+  });
+
+  // Esc means cancel during a key capture, so it cannot also mean "no key".
+  // Switching a key off gets a control of its own.
+  rebindOffBtn.addEventListener("click", () => {
+    if (picking === null) return;
+    const existing = rebindFor(picking);
+    if (existing) {
+      existing.toVk = 0;
+    } else {
+      movement.rebinds.push({ fromVk: picking, toVk: 0 });
+    }
+    picking = null;
+    renderMovement();
+    pushMovement();
+  });
+
+  rebindRemoveBtn.addEventListener("click", () => {
+    if (picking === null) return;
+    movement.rebinds = movement.rebinds.filter((r) => r.fromVk !== picking);
+    picking = null;
+    renderMovement();
+    pushMovement();
+  });
+
+  // Two presses, like everything else here that cannot be undone by mistake.
+  let resetArmed = false;
+  let resetTimer: number | undefined;
+  const disarmReset = () => {
+    resetArmed = false;
+    rebindResetBtn.textContent = "Reset to default";
+    rebindResetBtn.classList.remove("confirming");
+    window.clearTimeout(resetTimer);
+  };
+
+  rebindResetBtn.addEventListener("click", () => {
+    if (!resetArmed) {
+      resetArmed = true;
+      rebindResetBtn.textContent = "Sure?";
+      rebindResetBtn.classList.add("confirming");
+      resetTimer = window.setTimeout(disarmReset, 4000);
+      return;
+    }
+
+    disarmReset();
+    movement.rebinds = [];
+    picking = null;
+    renderMovement();
+    pushMovement();
+    text(
+      rebindPrompt,
+      "Cleared. Use Remove all below to take them out of Windows too.",
+    );
+  });
+
+  rebindResetBtn.addEventListener("mouseleave", () => {
+    if (resetArmed) disarmReset();
+  });
+
+  rebindWriteBtn.addEventListener("click", () => {
+    if (movement.rebinds.length === 0) {
+      text(rebindStatus, "Nothing to apply — the list is empty.");
+      return;
+    }
+
+    text(rebindStatus, "Waiting for administrator permission…");
+
+    void invoke("write_movement")
+      .then(async () => {
+        const landed = await awaitMapChange((state) => state.matches);
+        if (landed) {
+          text(
+            rebindStatus,
+            "Written into Windows. Restart the computer for it to take effect.",
+          );
+        } else {
+          text(
+            rebindStatus,
+            "Nothing was written. The permission prompt was probably declined — or it failed silently, in which case tell me.",
+          );
+        }
+      })
+      .catch((why) => text(rebindStatus, String(why)));
+  });
+
+  // Two presses, like every other irreversible button here.
+  let armed = false;
+  let timer: number | undefined;
+  const disarm = () => {
+    armed = false;
+    rebindClearBtn.textContent = "Remove all";
+    rebindClearBtn.classList.remove("confirming");
+    window.clearTimeout(timer);
+  };
+
+  rebindClearBtn.addEventListener("click", () => {
+    if (!armed) {
+      armed = true;
+      rebindClearBtn.textContent = "Sure?";
+      rebindClearBtn.classList.add("confirming");
+      timer = window.setTimeout(disarm, 4000);
+      return;
+    }
+
+    disarm();
+    text(rebindStatus, "Waiting for administrator permission…");
+
+    void invoke("clear_movement")
+      .then(async () => {
+        const gone = await awaitMapChange((state) => state.live.length === 0);
+        movement.rebinds = [];
+        renderMovement();
+        pushMovement();
+        text(
+          rebindStatus,
+          gone
+            ? "Removed from Windows. Restart the computer for it to take effect."
+            : "Nothing was removed — the permission prompt was probably declined.",
+        );
+      })
+      .catch((why) => text(rebindStatus, String(why)));
+  });
+
+  rebindClearBtn.addEventListener("mouseleave", () => {
+    if (armed) disarm();
+  });
 }
 
 function renderPresets(list: Preset[]): void {
@@ -3133,12 +3827,12 @@ function pushCrossbow(): void {
 function renderCrossbow(): void {
   bowSlot.value = String(crossbow.crossbowSlot);
   bowSwordSlot.value = String(crossbow.swordSlot);
-  bowKeyHold.value = String(crossbow.keyHoldMs);
+  bowKeyHold.value = trimNum(crossbow.keyHoldMs);
 
   bowTactical.checked = crossbow.tacticalEnabled;
   bowTacticalWrap.classList.toggle("open", crossbow.tacticalEnabled);
   bowTacticalSlot.value = String(crossbow.tacticalSlot);
-  bowSecondSwitch.value = String(crossbow.secondSwitchMs);
+  bowSecondSwitch.value = trimNum(crossbow.secondSwitchMs);
 
   text(
     bowSummary,
@@ -3146,9 +3840,10 @@ function renderCrossbow(): void {
       ? "Runs once per press: tactical crossbow, shoot, ordinary crossbow, shoot, back to your sword. This can share a key with a clicker — both will fire."
       : "Runs once per press: swaps to the crossbow, shoots, swaps back to your sword. This can share a key with a clicker — both will fire.",
   );
-  bowAfterSwitch.value = String(crossbow.afterSwitchMs);
-  bowClickHold.value = String(crossbow.clickHoldMs);
-  bowAfterClick.value = String(crossbow.afterClickMs);
+  bowAfterSwitch.value = trimNum(crossbow.afterSwitchMs);
+  bowClickHold.value = trimNum(crossbow.clickHoldMs);
+  bowAfterClick.value = trimNum(crossbow.afterClickMs);
+  bowSpeed.value = trimNum(crossbow.speed);
 
   bowBindToggle.checked = crossbow.bindEnabled;
   bowBindWrap.classList.toggle("open", crossbow.bindEnabled);
@@ -3185,8 +3880,8 @@ function wireCrossbow(): void {
 
   bowBindBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     beginCapture({ kind: "bowBind" });
@@ -3211,14 +3906,43 @@ function wireCrossbow(): void {
     pushCrossbow();
   });
 
+  // Slots are counted, so they round. Delays are not, so they do not.
+  const delay = (
+    input: HTMLInputElement,
+    cap: number,
+    apply: (value: number) => void,
+  ) => {
+    input.addEventListener("change", () => {
+      apply(Math.min(cap, Math.max(0, Number(input.value) || 0)));
+      renderCrossbow();
+      pushCrossbow();
+    });
+  };
+
   number(bowSlot, 1, 9, (v) => (crossbow.crossbowSlot = v));
   number(bowTacticalSlot, 1, 9, (v) => (crossbow.tacticalSlot = v));
-  number(bowSecondSwitch, 0, 5000, (v) => (crossbow.secondSwitchMs = v));
   number(bowSwordSlot, 1, 9, (v) => (crossbow.swordSlot = v));
-  number(bowKeyHold, 0, 2000, (v) => (crossbow.keyHoldMs = v));
-  number(bowAfterSwitch, 0, 5000, (v) => (crossbow.afterSwitchMs = v));
-  number(bowClickHold, 0, 2000, (v) => (crossbow.clickHoldMs = v));
-  number(bowAfterClick, 0, 5000, (v) => (crossbow.afterClickMs = v));
+
+  delay(bowSecondSwitch, 5000, (v) => (crossbow.secondSwitchMs = v));
+  delay(bowKeyHold, 2000, (v) => (crossbow.keyHoldMs = v));
+  delay(bowAfterSwitch, 5000, (v) => (crossbow.afterSwitchMs = v));
+  delay(bowClickHold, 2000, (v) => (crossbow.clickHoldMs = v));
+  delay(bowAfterClick, 5000, (v) => (crossbow.afterClickMs = v));
+
+  bowSpeed.addEventListener("change", () => {
+    const next = Math.min(10, Math.max(0.1, Number(bowSpeed.value) || 1));
+    const factor = crossbow.speed / next;
+    crossbow.speed = next;
+
+    crossbow.keyHoldMs = stretch(crossbow.keyHoldMs, factor);
+    crossbow.afterSwitchMs = stretch(crossbow.afterSwitchMs, factor);
+    crossbow.clickHoldMs = stretch(crossbow.clickHoldMs, factor);
+    crossbow.afterClickMs = stretch(crossbow.afterClickMs, factor);
+    crossbow.secondSwitchMs = stretch(crossbow.secondSwitchMs, factor);
+
+    renderCrossbow();
+    pushCrossbow();
+  });
 }
 
 /**
@@ -3309,6 +4033,22 @@ function wireResets(): void {
     });
 }
 
+/**
+ * One delay, stretched or squeezed by the speed control.
+ *
+ * No rounding. This used to round to whole milliseconds and it made the
+ * control lossy in one direction: 7 halved became 4 rather than 3.5, and
+ * doubling that gave 8. Every trip through inflated the numbers, so speed 1 →
+ * 2 → 1 did not bring you back to where you started.
+ *
+ * The delays are fractions all the way down now, and only the wait itself
+ * rounds — once, at the moment it happens. So 7 → 3.5 → 7 exactly.
+ */
+function stretch(ms: number, factor: number): number {
+  if (ms <= 0) return 0;
+  return ms * factor;
+}
+
 /** The hotkey is yours, not part of the tuning, so a reset leaves it alone. */
 function keepBind(current: { bindEnabled: boolean; bindVk: number }): {
   bindEnabled: boolean;
@@ -3317,40 +4057,42 @@ function keepBind(current: { bindEnabled: boolean; bindVk: number }): {
   return { bindEnabled: current.bindEnabled, bindVk: current.bindVk };
 }
 
-/** Scroll to change, select on click, and no reaction to the arrow keys. */
+/**
+ * Select on click, and nothing else touches the value.
+ *
+ * A number field must never change from a scroll or an arrow key. Both happen
+ * while you are only trying to get around the page -- scrolling past a field
+ * with the pointer over it used to edit it silently -- and a value you did not
+ * mean to change is worse than one that takes a moment longer to type.
+ */
 function wireNumberInputs(): void {
-  const nudge = (input: HTMLInputElement, by: number) => {
-    const now = Number(input.value) || 0;
-    const min = input.min === "" ? -Infinity : Number(input.min);
-    const max = input.max === "" ? Infinity : Number(input.max);
-
-    const next = Math.min(max, Math.max(min, now + by));
-    if (next === now) return;
-
-    input.value = String(next);
-    input.dispatchEvent(new Event("change"));
-  };
-
+  // Every number field in the app, not just the ones on the Macros tab. A
+  // rule about how a control behaves is worth nothing if it only holds in
+  // some of the places that control appears.
   document
-    .querySelectorAll<HTMLInputElement>('.macro-body input[type="number"]')
+    .querySelectorAll<HTMLInputElement>('input[type="number"]')
     .forEach((input) => {
-      const step = () => Number(input.step) || 1;
-
-      // the arrow keys leave the value alone
       input.addEventListener("keydown", (event) => {
         if (event.key === "ArrowUp" || event.key === "ArrowDown") {
           event.preventDefault();
         }
       });
 
+      // A number field only takes the wheel while it has focus, so dropping
+      // focus is enough to stop the value moving.
+      //
+      // Cancelling the event would work too, and is what this did at first --
+      // but scrolling the value and scrolling the page are the same default
+      // action, so cancelling one cancels both, and the panel went dead under
+      // the pointer. Letting the event run untouched keeps the page moving.
       input.addEventListener(
         "wheel",
-        (event) => {
-          event.preventDefault();
-          const jump = event.shiftKey ? step() * 10 : step();
-          nudge(input, event.deltaY < 0 ? jump : -jump);
+        () => {
+          if (document.activeElement === input) {
+            input.blur();
+          }
         },
-        { passive: false },
+        { passive: true },
       );
 
       // Clicking a field selects what is in it, so typing a new value
@@ -3384,8 +4126,8 @@ function wireSkywars(): void {
 
   skyBindBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     beginCapture({ kind: "skyBind" });
@@ -3393,7 +4135,9 @@ function wireSkywars(): void {
 
   const timing = (input: HTMLInputElement, cap: number, apply: (value: number) => void) => {
     input.addEventListener("change", () => {
-      apply(Math.min(cap, Math.max(0, Math.round(Number(input.value) || 0))));
+      // no rounding: a delay may legitimately be 3.5 ms once the speed
+      // control has been near it
+      apply(Math.min(cap, Math.max(0, Number(input.value) || 0)));
       renderSkywars();
       pushSkywars();
     });
@@ -3403,6 +4147,20 @@ function wireSkywars(): void {
   timing(skyClickHold, 2000, (v) => (skywars.clickHoldMs = v));
   timing(skyBetween, 5000, (v) => (skywars.betweenMs = v));
   timing(skyRetryGap, 2000, (v) => (skywars.retryGapMs = v));
+
+  skySpeed.addEventListener("change", () => {
+    const next = Math.min(10, Math.max(0.1, Number(skySpeed.value) || 1));
+    const factor = skywars.speed / next;
+    skywars.speed = next;
+
+    skywars.settleMs = stretch(skywars.settleMs, factor);
+    skywars.clickHoldMs = stretch(skywars.clickHoldMs, factor);
+    skywars.betweenMs = stretch(skywars.betweenMs, factor);
+    skywars.retryGapMs = stretch(skywars.retryGapMs, factor);
+
+    renderSkywars();
+    pushSkywars();
+  });
 
   skyClicks.addEventListener("change", () => {
     skywars.clicksPerItem = Math.min(5, Math.max(1, Math.round(Number(skyClicks.value) || 1)));
@@ -3510,8 +4268,8 @@ function wireAutomation(): void {
 
   autoBindBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     beginCapture({ kind: "autoBind" });
@@ -3700,8 +4458,8 @@ function wireSegments(): void {
 
   pickPointBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     if (!profile.targetTitle) {
@@ -3757,13 +4515,35 @@ function captureButton(target: CaptureTarget): HTMLElement | null {
       return dvyHoldKeyBtn;
     case "bowBind":
       return bowBindBtn;
+    // Rebind rows are rebuilt on every render, so there is no lasting element
+    // to hand back. The row redraws itself with the new key instead.
     default:
       return null;
   }
 }
 
+/**
+ * How long a bind stays open for after you press something.
+ *
+ * Mouse 1 could not be bound at all before this: the click that was meant to
+ * become the bind was also the click that dismissed the picker, so it never
+ * survived. Now the picker holds its ground for a moment — the press is taken,
+ * and the picker outlives it.
+ */
+const CAPTURE_MS = 3000;
+
+let captureUntil = 0;
+let captureTimer: number | undefined;
+
 function beginCapture(target: CaptureTarget): void {
   capturing = target;
+
+  captureUntil = Date.now() + CAPTURE_MS;
+  window.clearTimeout(captureTimer);
+  captureTimer = window.setTimeout(() => {
+    void invoke("cancel_capture");
+    endCapture();
+  }, CAPTURE_MS);
 
   const button = captureButton(target);
   if (button) {
@@ -3781,7 +4561,68 @@ function beginCapture(target: CaptureTarget): void {
   if (target.kind === "position" || target.kind === "stepKey") renderSteps();
 }
 
+/** What this target is bound to now, before anything new is applied. */
+function currentBind(target: CaptureTarget): number {
+  switch (target.kind) {
+    case "panic":
+      return settings.panicVk;
+    case "autoBind":
+      return automation.bindVk;
+    case "fisherBind":
+      return fisher.bindVk;
+    case "dropBind":
+      return gumdrop.bindVk;
+    case "skyBind":
+      return skywars.bindVk;
+    case "dvyBind":
+      return davey.bindVk;
+    case "dvyHoldKey":
+      return davey.holdVk;
+    case "bowBind":
+      return crossbow.bindVk;
+    case "stepKey": {
+      const step = automation.steps[target.index];
+      return step && step.kind === "key" ? step.vk : 0;
+    }
+    default:
+      return profile.bindVk;
+  }
+}
+
+/**
+ * Put the picker back into listening after a press has been taken.
+ *
+ * The bind is already saved by this point. Staying open only means the next
+ * press within the window replaces it, so you can correct yourself without
+ * starting over.
+ */
+function reopenCapture(target: CaptureTarget, deadline: number): void {
+  capturing = target;
+
+  // The window runs from when the picker was first opened, not from the last
+  // press. Otherwise holding a key down could keep it open indefinitely.
+  captureUntil = deadline;
+  window.clearTimeout(captureTimer);
+  captureTimer = window.setTimeout(
+    () => {
+      void invoke("cancel_capture");
+      endCapture();
+    },
+    Math.max(0, deadline - Date.now()),
+  );
+
+  // The label is left showing whatever was just bound, rather than going back
+  // to "Press any key…". You need to see that the press landed; the button
+  // still pulses to say it is listening for a change of mind.
+  captureButton(target)?.classList.add("listening");
+
+  void invoke("begin_capture");
+  if (target.kind === "position" || target.kind === "stepKey") renderSteps();
+}
+
 function endCapture(): void {
+  window.clearTimeout(captureTimer);
+  captureUntil = 0;
   bindBtn.classList.remove("listening");
   panicBtn.classList.remove("listening");
   autoBindBtn.classList.remove("listening");
@@ -3796,8 +4637,8 @@ function endCapture(): void {
 function wireBinds(): void {
   bindBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     beginCapture({ kind: "bind" });
@@ -3805,8 +4646,8 @@ function wireBinds(): void {
 
   panicBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     beginCapture({ kind: "panic" });
@@ -3952,8 +4793,8 @@ function wireToggles(): void {
 
   addPointBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     if (!profile.targetTitle) {
@@ -4004,8 +4845,8 @@ function wireToggles(): void {
 
   pickPixelBtn.addEventListener("click", () => {
     if (capturing) {
-      void invoke("cancel_capture");
-      endCapture();
+      // Already listening. Do nothing at all, so this click reaches
+      // the capture and can be bound like any other button.
       return;
     }
     pixelHint.textContent = "Point at the spot and click…";
@@ -4111,6 +4952,12 @@ function wireToggles(): void {
 
   acrylicToggle.addEventListener("change", () => {
     settings.acrylic = acrylicToggle.checked;
+    push();
+  });
+
+  closeToTrayToggle.addEventListener("change", () => {
+    settings.closeToTray = closeToTrayToggle.checked;
+    renderAppearance();
     push();
   });
 
@@ -4260,6 +5107,13 @@ async function wireEvents(): Promise<void> {
     const target = capturing;
     if (!target) return;
 
+    // Read before any branch below overwrites it. Pressing what is already
+    // bound is a confirmation, so it closes at once; anything else leaves the
+    // picker open for the rest of the window.
+    const confirmed = vk === currentBind(target);
+    const deadline = captureUntil;
+    const expired = Date.now() >= deadline;
+
     if (target.kind === "panic") {
       settings.panicVk = vk;
       endCapture();
@@ -4289,7 +5143,6 @@ async function wireEvents(): Promise<void> {
       gumdrop.bindVk = vk;
       endCapture();
       renderGumdrop();
-  renderSkywars();
       pushGumdrop();
     } else if (target.kind === "skyBind") {
       skywars.bindVk = vk;
@@ -4336,6 +5189,16 @@ async function wireEvents(): Promise<void> {
       renderConflict();
       renderBind();
       push();
+    }
+
+    // Every branch above closed the picker. Unless this press confirmed what
+    // was already there, or the window has run out, put it back — the bind is
+    // saved either way, so nothing is lost by listening a moment longer.
+    //
+    // Branches that bailed on a clash returned before reaching here, which is
+    // right: those did not set anything, and their message should stay put.
+    if (!confirmed && !expired) {
+      reopenCapture(target, deadline);
     }
   });
 
@@ -4454,7 +5317,11 @@ async function boot(): Promise<void> {
   davey = await invoke<Davey>("get_davey");
   crossbow = await invoke<Crossbow>("get_crossbow");
   overlay = await invoke<Overlay>("get_overlay");
+  movement = await invoke<MovementSettings>("get_movement");
+  socd = await invoke<Socd>("get_socd");
   renderPresets(settings.presets ?? []);
+  renderMovement();
+  void refreshMapState();
 
   document.querySelectorAll<HTMLInputElement>("input").forEach(noAutofill);
 
@@ -4514,6 +5381,7 @@ async function boot(): Promise<void> {
   wireResets();
   wireNumberInputs();
   wireOptimize();
+  wireMovement();
   wireSuggest();
 
   window.addEventListener("resize", rememberWindowSize);

@@ -289,6 +289,20 @@ pub struct Settings {
     pub blur_enabled: bool,
     pub acrylic: bool,
 
+    /// What the window's close button does. On, it hides to the tray and the
+    /// binds keep working. Off, it quits.
+    ///
+    /// A clicker that answers a hotkey has a reason to outlive its window, but
+    /// it should be a choice rather than a surprise.
+    pub close_to_tray: bool,
+
+    /// The rebinds Syntax believes are set. Whether Windows agrees is a
+    /// separate question, answered by reading the registry back.
+    pub movement: crate::movement::MovementSettings,
+
+    /// Which keys cancel which, and whether that is switched on.
+    pub socd: crate::socd::SocdSettings,
+
     pub opacity: f64,
 
     pub automation: AutomationSettings,
@@ -330,6 +344,9 @@ impl Default for Settings {
             always_on_top: false,
             blur_enabled: true,
             acrylic: false,
+            close_to_tray: true,
+            movement: crate::movement::MovementSettings::default(),
+            socd: crate::socd::SocdSettings::default(),
             opacity: 0.72,
             automation: AutomationSettings::default(),
             fisher: FisherSettings::default(),
@@ -407,6 +424,8 @@ impl Settings {
         self.skywars = self.skywars.sanitised();
         self.davey = self.davey.sanitised();
         self.crossbow = self.crossbow.sanitised();
+        self.movement = self.movement.clone().sanitised();
+        self.socd = self.socd.clone().sanitised();
         self.overlay = self.overlay.sanitised();
 
         self.presets = self

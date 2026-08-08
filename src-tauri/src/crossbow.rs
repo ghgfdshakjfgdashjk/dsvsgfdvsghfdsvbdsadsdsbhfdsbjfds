@@ -7,6 +7,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::win32;
 
+/// A delay, kept sane and kept fractional.
+///
+/// These are held as fractions rather than whole milliseconds so the speed
+/// control can scale them and scale them back without drift. Halving 7 gives
+/// 3.5, not 4, so doubling it returns the 7 you started with. Only the wait
+/// itself rounds, and it rounds once, at the end.
+fn clamp_ms(value: f64, cap: f64) -> f64 {
+    if !value.is_finite() || value < 0.0 {
+        return 0.0;
+    }
+    value.min(cap)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct CrossbowSettings {
@@ -21,16 +34,21 @@ pub struct CrossbowSettings {
     /// Used in place of `after_switch_ms` for the second shot only, so the
     /// crossbow can be given longer to come out after the tactical bow has
     /// fired without slowing down the first swap.
-    pub second_switch_ms: u64,
+    pub second_switch_ms: f64,
     /// How long each slot number is held.
-    pub key_hold_ms: u64,
+    pub key_hold_ms: f64,
     /// Time to let the crossbow actually come out before firing.
-    pub after_switch_ms: u64,
+    pub after_switch_ms: f64,
     /// How long the mouse button is held for the shot. A game reads the
     /// button once a frame, so this has to outlast a frame to be seen.
-    pub click_hold_ms: u64,
+    pub click_hold_ms: f64,
     /// Gap after the shot, before going back to the sword.
-    pub after_click_ms: u64,
+    pub after_click_ms: f64,
+    /// Where the speed control was left, so it reads right next time.
+    ///
+    /// Nothing here uses it. Moving it rewrites the delays above directly, so
+    /// they are already the real numbers by the time they arrive.
+    pub speed: f64,
 }
 
 impl Default for CrossbowSettings {
@@ -42,11 +60,12 @@ impl Default for CrossbowSettings {
             sword_slot: 1,
             tactical_enabled: false,
             tactical_slot: 3,
-            second_switch_ms: 120,
-            key_hold_ms: 12,
-            after_switch_ms: 40,
-            click_hold_ms: 40,
-            after_click_ms: 40,
+            second_switch_ms: 120.0,
+            key_hold_ms: 12.0,
+            after_switch_ms: 40.0,
+            click_hold_ms: 40.0,
+            after_click_ms: 40.0,
+            speed: 1.0,
         }
     }
 }
@@ -56,11 +75,15 @@ impl CrossbowSettings {
         self.crossbow_slot = self.crossbow_slot.clamp(1, 9);
         self.sword_slot = self.sword_slot.clamp(1, 9);
         self.tactical_slot = self.tactical_slot.clamp(1, 9);
-        self.second_switch_ms = self.second_switch_ms.min(5_000);
-        self.key_hold_ms = self.key_hold_ms.min(2_000);
-        self.after_switch_ms = self.after_switch_ms.min(5_000);
-        self.click_hold_ms = self.click_hold_ms.min(2_000);
-        self.after_click_ms = self.after_click_ms.min(5_000);
+        self.second_switch_ms = clamp_ms(self.second_switch_ms, 5000.0);
+        self.key_hold_ms = clamp_ms(self.key_hold_ms, 2000.0);
+        self.after_switch_ms = clamp_ms(self.after_switch_ms, 5000.0);
+        self.click_hold_ms = clamp_ms(self.click_hold_ms, 2000.0);
+        self.after_click_ms = clamp_ms(self.after_click_ms, 5000.0);
+        if !self.speed.is_finite() || self.speed <= 0.0 {
+            self.speed = 1.0;
+        }
+        self.speed = self.speed.clamp(0.1, 10.0);
         self
     }
 }
@@ -138,12 +161,12 @@ impl Crossbow {
 
 /// Windows overshoots a short sleep by a whole timer tick, which at these
 /// lengths is most of the delay. Spin for the short ones.
-fn wait(ms: u64) {
-    if ms == 0 {
+fn wait(ms: f64) {
+    if !(ms > 0.0) {
         return;
     }
 
-    let span = Duration::from_millis(ms);
+    let span = Duration::from_secs_f64(ms / 1000.0);
     if span < Duration::from_micros(1500) {
         let until = Instant::now() + span;
         while Instant::now() < until {
@@ -154,8 +177,8 @@ fn wait(ms: u64) {
     }
 }
 
-fn tap(vk: u16, hold: u64) {
-    if hold == 0 {
+fn tap(vk: u16, hold: f64) {
+    if hold <= 0.0 {
         win32::send_inputs(&[win32::key_event(vk, false), win32::key_event(vk, true)]);
         return;
     }
@@ -165,10 +188,10 @@ fn tap(vk: u16, hold: u64) {
     win32::send_inputs(&[win32::key_event(vk, true)]);
 }
 
-fn click(hold: u64) {
+fn click(hold: f64) {
     let spec = win32::button_spec("left");
 
-    if hold == 0 {
+    if hold <= 0.0 {
         win32::send_inputs(&[
             win32::mouse_event(&spec, spec.down),
             win32::mouse_event(&spec, spec.up),
@@ -186,7 +209,7 @@ fn slot_key(slot: u32) -> u16 {
 }
 
 /// Swap to a slot, wait `settle` for the weapon to come out, shoot, and pause.
-fn shoot_from(slot: u32, settle: u64, settings: &CrossbowSettings) {
+fn shoot_from(slot: u32, settle: f64, settings: &CrossbowSettings) {
     tap(slot_key(slot), settings.key_hold_ms);
     wait(settle);
 

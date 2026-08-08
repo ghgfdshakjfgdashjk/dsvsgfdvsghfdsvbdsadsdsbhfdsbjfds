@@ -27,16 +27,35 @@ const EDGE_JUMP: i32 = 20;
 const EDGE_PERCENT: i32 = 2;
 const SPREAD_MIN: i32 = 40;
 
+/// A delay, kept sane and kept fractional.
+///
+/// These are held as fractions rather than whole milliseconds so the speed
+/// control can scale them and scale them back without drift. Halving 7 gives
+/// 3.5, not 4, so doubling it returns the 7 you started with. Only the wait
+/// itself rounds, and it rounds once, at the end.
+fn clamp_ms(value: f64, cap: f64) -> f64 {
+    if !value.is_finite() || value < 0.0 {
+        return 0.0;
+    }
+    value.min(cap)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct SkywarsSettings {
     pub bind_enabled: bool,
     pub bind_vk: u32,
-    pub click_hold_ms: u64,
-    pub settle_ms: u64,
-    pub between_ms: u64,
+    pub click_hold_ms: f64,
+    pub settle_ms: f64,
+    pub between_ms: f64,
     pub clicks_per_item: u32,
-    pub retry_gap_ms: u64,
+    pub retry_gap_ms: f64,
+    /// Where the speed control was left, so it reads right next time.
+    ///
+    /// Nothing here uses it. Moving it rewrites the delays above directly, so
+    /// by the time they reach this struct they are already the real numbers.
+    /// It is remembered only so the control has somewhere to start from.
+    pub speed: f64,
     pub restore_cursor: bool,
 }
 
@@ -46,11 +65,12 @@ impl Default for SkywarsSettings {
             bind_enabled: false,
             bind_vk: 0,
             // Tuned against a real chest rather than guessed at.
-            click_hold_ms: 1,
-            settle_ms: 7,
-            between_ms: 7,
+            click_hold_ms: 1.0,
+            settle_ms: 7.0,
+            between_ms: 7.0,
             clicks_per_item: 2,
-            retry_gap_ms: 1,
+            retry_gap_ms: 1.0,
+            speed: 1.0,
             restore_cursor: true,
         }
     }
@@ -58,11 +78,15 @@ impl Default for SkywarsSettings {
 
 impl SkywarsSettings {
     pub fn sanitised(mut self) -> Self {
-        self.click_hold_ms = self.click_hold_ms.min(2_000);
-        self.settle_ms = self.settle_ms.min(2_000);
-        self.between_ms = self.between_ms.min(5_000);
+        self.click_hold_ms = clamp_ms(self.click_hold_ms, 2000.0);
+        self.settle_ms = clamp_ms(self.settle_ms, 2000.0);
+        self.between_ms = clamp_ms(self.between_ms, 5000.0);
         self.clicks_per_item = self.clicks_per_item.clamp(1, 5);
-        self.retry_gap_ms = self.retry_gap_ms.min(2_000);
+        self.retry_gap_ms = clamp_ms(self.retry_gap_ms, 2000.0);
+        if !self.speed.is_finite() || self.speed <= 0.0 {
+            self.speed = 1.0;
+        }
+        self.speed = self.speed.clamp(0.1, 10.0);
         self
     }
 }
@@ -380,12 +404,12 @@ fn occupied(frame: &[u32], width: i32, slot: &Slot) -> bool {
 /// Windows will happily overshoot a short thread::sleep by a whole timer
 /// tick, which at these lengths is most of the delay. Spin for the short
 /// ones and sleep only when it is long enough to be worth it.
-fn wait(ms: u64) {
-    if ms == 0 {
+fn wait(ms: f64) {
+    if !(ms > 0.0) {
         return;
     }
 
-    let span = Duration::from_millis(ms);
+    let span = Duration::from_secs_f64(ms / 1000.0);
     if span < Duration::from_micros(1500) {
         let until = Instant::now() + span;
         while Instant::now() < until {

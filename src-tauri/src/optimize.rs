@@ -102,6 +102,96 @@ fn read_dword(path: &str, name: &str) -> Option<u32> {
     read_dword_in(HKEY_CURRENT_USER, path, name)
 }
 
+/// A raw machine-wide value, however long it is.
+///
+/// Asked for its size first, because these are variable length and guessing a
+/// buffer would silently truncate anything longer than the guess.
+pub fn read_binary(path: &str, name: &str) -> Option<Vec<u8>> {
+    unsafe {
+        let mut key: HKEY = 0;
+        if RegOpenKeyExW(
+            HKEY_LOCAL_MACHINE,
+            wide(path).as_ptr(),
+            0,
+            KEY_READ,
+            &mut key,
+        ) != ERROR_SUCCESS
+        {
+            return None;
+        }
+
+        let mut size: u32 = 0;
+        let status = RegQueryValueExW(
+            key,
+            wide(name).as_ptr(),
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            &mut size,
+        );
+
+        if status != ERROR_SUCCESS || size == 0 {
+            RegCloseKey(key);
+            return None;
+        }
+
+        let mut buffer = vec![0u8; size as usize];
+        let status = RegQueryValueExW(
+            key,
+            wide(name).as_ptr(),
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            buffer.as_mut_ptr(),
+            &mut size,
+        );
+        RegCloseKey(key);
+
+        if status == ERROR_SUCCESS {
+            buffer.truncate(size as usize);
+            Some(buffer)
+        } else {
+            None
+        }
+    }
+}
+
+/// Write a binary value under HKLM, asking for administrator rights.
+///
+/// `hex` is the bytes as an unbroken hex string. It is turned into a byte
+/// array by PowerShell rather than passed as one, because a byte array
+/// written out longhand would be thousands of characters of command line.
+pub fn write_binary_elevated(path: &str, name: &str, hex: &str) -> Result<(), String> {
+    if !hex.chars().all(|c| c.is_ascii_hexdigit()) || hex.len() % 2 != 0 {
+        return Err("that map is not valid hex".into());
+    }
+
+    // Set-ItemProperty rather than New-ItemProperty: it creates the value if
+    // it is missing and overwrites it if it is not, where the New- form is
+    // fussier about which of those it is being asked to do.
+    let script = format!(
+        "$h='{hex}'; \
+         $b=[byte[]]::new($h.Length/2); \
+         for($i=0;$i -lt $b.Length;$i++){{$b[$i]=[Convert]::ToByte($h.Substring($i*2,2),16)}}; \
+         Set-ItemProperty -Path 'HKLM:\\{path}' -Name '{name}' \
+         -Type Binary -Value $b -Force"
+    );
+
+    run_elevated(&script)
+}
+
+/// Remove a value under HKLM, asking for administrator rights.
+///
+/// A value that was never there is a success, not a failure -- the caller
+/// wanted it gone and it is gone.
+pub fn delete_value_elevated(path: &str, name: &str) -> Result<(), String> {
+    let script = format!(
+        "Remove-ItemProperty -Path 'HKLM:\\{path}' -Name '{name}' \
+         -Force -ErrorAction SilentlyContinue"
+    );
+
+    run_elevated(&script)
+}
+
 fn read_dword_in(hive: HKEY, path: &str, name: &str) -> Option<u32> {
     unsafe {
         let mut key: HKEY = 0;

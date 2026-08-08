@@ -3,6 +3,7 @@
 use std::ffi::c_void;
 use std::mem::size_of;
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, Ordering};
+use std::time::Duration;
 
 pub type HWND = isize;
 pub type HRGN = isize;
@@ -19,6 +20,13 @@ pub const VK_CONTROL: u16 = 0x11;
 pub const VK_MENU: u16 = 0x12;
 
 const MAPVK_VK_TO_VSC: u32 = 0;
+
+/// Scancode back to virtual key.
+const MAPVK_VSC_TO_VK_EX: u32 = 3;
+
+/// Virtual key to scancode, keeping the 0xE0 prefix that marks the extended
+/// keys. Without it the arrows and the numeric keypad are indistinguishable.
+const MAPVK_VK_TO_VSC_EX: u32 = 4;
 
 pub const WM_LBUTTONDOWN: u32 = 0x0201;
 pub const WM_LBUTTONUP: u32 = 0x0202;
@@ -112,6 +120,8 @@ extern "system" {
     fn ReleaseDC(hWnd: HWND, hDC: isize) -> i32;
     fn SendInput(cInputs: u32, pInputs: *const INPUT, cbSize: i32) -> u32;
     fn GetAsyncKeyState(vKey: i32) -> i16;
+    fn SystemParametersInfoW(uiAction: u32, uiParam: u32, pvParam: *mut c_void, fWinIni: u32)
+        -> i32;
     fn GetForegroundWindow() -> HWND;
     fn GetWindowTextLengthW(hWnd: HWND) -> i32;
     fn GetWindowTextW(hWnd: HWND, lpString: *mut u16, nMaxCount: i32) -> i32;
@@ -734,6 +744,69 @@ pub fn install_keyboard_hook() {
             UnhookWindowsHookEx(hook);
         })
         .ok();
+}
+
+static SOCD_HOOK_THREAD: AtomicU32 = AtomicU32::new(0);
+
+const WM_SYSKEYDOWN: u32 = 0x0104;
+
+/// The hook SOCD runs on.
+///
+/// Separate from the recorder's, which only watches. This one can swallow an
+/// event, and the two have nothing to do with each other's lifetimes.
+///
+/// Anything Syntax sent itself is waved straight through -- the releases and
+/// presses SOCD injects come back through here, and treating them as real
+/// presses would have it arguing with itself.
+unsafe extern "system" fn socd_hook_proc(code: i32, wparam: usize, lparam: isize) -> isize {
+    if code >= 0 && lparam != 0 {
+        let info = &*(lparam as *const KBDLLHOOKSTRUCT);
+
+        if info.dwExtraInfo != SIGNATURE {
+            let down = matches!(wparam as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
+            let up = matches!(wparam as u32, WM_KEYUP | WM_SYSKEYUP);
+
+            if (down || up) && crate::socd::intercept(info.vkCode, down) {
+                return 1;
+            }
+        }
+    }
+
+    CallNextHookEx(0, code, wparam, lparam)
+}
+
+pub fn install_socd_hook() {
+    if SOCD_HOOK_THREAD.load(Ordering::Relaxed) != 0 {
+        return;
+    }
+
+    std::thread::Builder::new()
+        .name("socd-hook".into())
+        .spawn(|| unsafe {
+            let module = GetModuleHandleW(std::ptr::null());
+            let hook = SetWindowsHookExW(WH_KEYBOARD_LL, socd_hook_proc, module, 0);
+            if hook == 0 {
+                eprintln!("SOCD keyboard hook failed to install");
+                return;
+            }
+            SOCD_HOOK_THREAD.store(GetCurrentThreadId(), Ordering::Release);
+
+            // A low-level hook is delivered to this thread's message queue, so
+            // it has to keep pumping one or nothing arrives.
+            let mut msg = MSG::default();
+            while GetMessageW(&mut msg, 0, 0, 0) > 0 {}
+
+            SOCD_HOOK_THREAD.store(0, Ordering::Release);
+            UnhookWindowsHookEx(hook);
+        })
+        .ok();
+}
+
+pub fn remove_socd_hook() {
+    let thread = SOCD_HOOK_THREAD.swap(0, Ordering::AcqRel);
+    if thread != 0 {
+        unsafe { PostThreadMessageW(thread, WM_QUIT, 0, 0) };
+    }
 }
 
 pub fn remove_keyboard_hook() {
@@ -1476,6 +1549,56 @@ pub fn target_under_cursor() -> Option<Target> {
             y: client.y,
         })
     }
+}
+
+/// The scancode for a virtual key, extended prefix included.
+///
+/// The result is what the keyboard actually sends, which is what the scancode
+/// map is written in terms of -- it knows nothing about virtual keys.
+const SPI_GETKEYBOARDSPEED: u32 = 0x000A;
+const SPI_GETKEYBOARDDELAY: u32 = 0x0016;
+
+/// How long Windows waits before a held key starts repeating, and how long
+/// between repeats after that.
+///
+/// Read from the system rather than guessed, so an emulated repeat is
+/// indistinguishable in timing from a real one. Both settings are indexes
+/// rather than times: the delay is 0-3 over 250ms steps, and the speed is
+/// 0-31 spread over roughly 2.5 to 30 repeats a second.
+pub fn keyboard_repeat() -> (Duration, Duration) {
+    unsafe {
+        let mut delay: u32 = 1;
+        let mut speed: u32 = 31;
+
+        SystemParametersInfoW(
+            SPI_GETKEYBOARDDELAY,
+            0,
+            &mut delay as *mut u32 as *mut c_void,
+            0,
+        );
+        SystemParametersInfoW(
+            SPI_GETKEYBOARDSPEED,
+            0,
+            &mut speed as *mut u32 as *mut c_void,
+            0,
+        );
+
+        let first = Duration::from_millis(250 * (delay.min(3) as u64 + 1));
+        let per_second = 2.5 + (speed.min(31) as f64) * (27.5 / 31.0);
+        (first, Duration::from_secs_f64(1.0 / per_second))
+    }
+}
+
+pub fn vk_to_scancode_ex(vk: u32) -> u32 {
+    unsafe { MapVirtualKeyW(vk, MAPVK_VK_TO_VSC_EX) }
+}
+
+/// The virtual key a scancode produces, or 0 if no key on this layout does.
+///
+/// The 0xE000 prefix is handed over as-is: the mapping is layout-dependent
+/// and Windows is the one that knows it.
+pub fn scancode_to_vk(scan: u16) -> u32 {
+    unsafe { MapVirtualKeyW(scan as u32, MAPVK_VSC_TO_VK_EX) }
 }
 
 pub fn cursor_position() -> (i32, i32) {
